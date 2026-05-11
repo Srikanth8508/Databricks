@@ -88,14 +88,6 @@ Meaning:
 - Apply transformation logic
 - Return modified array
 
----
-
-# Real-Time Use Cases
-
-- Discount calculations
-- Currency conversion
-- Data standardization
-- Unit conversion
 
 ---
 
@@ -125,15 +117,6 @@ FROM orders;
 |---|---|
 | 1 | [20,30] |
 | 2 | [25] |
-
----
-
-# Real-Time Use Cases
-
-- Remove invalid values
-- Filter negative transactions
-- Data cleansing
-- Remove nulls
 
 ---
 
@@ -174,14 +157,6 @@ Does the array contain any value > 25?
 
 ---
 
-# Real-Time Use Cases
-
-- Fraud detection
-- Threshold alerts
-- Validation checks
-
----
-
 # 4. forall()
 
 Checks if ALL elements satisfy a condition.
@@ -211,13 +186,6 @@ FROM orders;
 
 ---
 
-# Real-Time Use Cases
-
-- Data quality validation
-- Positive transaction checks
-- Sensor validation
-
----
 
 # 5. aggregate()
 
@@ -259,14 +227,6 @@ FROM orders;
 
 ---
 
-# Real-Time Use Cases
-
-- Total purchases
-- KPI calculations
-- Revenue aggregation
-- Score calculation
-
----
 
 # 6. zip_with()
 
@@ -292,14 +252,6 @@ SELECT
 ```text
 [11,22,33]
 ```
-
----
-
-# Real-Time Use Cases
-
-- Merge sensor readings
-- Compare datasets
-- Combine metrics
 
 ---
 
@@ -329,14 +281,6 @@ FROM orders;
 
 ---
 
-# Real-Time Use Cases
-
-- Ranking arrays
-- Sorted metrics
-- Ordered outputs
-
----
-
 # 8. array_distinct()
 
 Removes duplicate array elements.
@@ -360,14 +304,6 @@ SELECT
 
 ---
 
-# Real-Time Use Cases
-
-- Remove duplicate products
-- Deduplicate events
-- Unique user tracking
-
----
-
 # 9. array_contains()
 
 Checks if array contains a specific value.
@@ -381,14 +317,6 @@ SELECT
     array_contains(items, 20)
 FROM orders;
 ```
-
----
-
-# Real-Time Use Cases
-
-- Product search
-- Tag validation
-- Feature detection
 
 ---
 
