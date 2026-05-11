@@ -1,4 +1,4 @@
-# Higher Order Functions in Delta Lake / Apache Spark — Complete Guide
+# Higher Order Functions in Delta Lake / Apache Spark 
 
 # Sample Dataset
 
