@@ -2,19 +2,6 @@
 
 # Most Important Higher Order Functions
 
-| Function | Purpose |
-|---|---|
-| transform() | Modify array elements |
-| filter() | Filter array elements |
-| exists() | Check if any element matches condition |
-| forall() | Verify all elements satisfy condition |
-| aggregate() | Reduce array into single value |
-| zip_with() | Combine arrays |
-| map_filter() | Filter map entries |
-| map_values() | Extract map values |
-
----
-
 # Sample Dataset
 
 # Step 1 — Create Sample Table
