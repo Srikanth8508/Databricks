@@ -1,7 +1,5 @@
 # Higher Order Functions in Delta Lake / Apache Spark — Complete Guide
 
-# Most Important Higher Order Functions
-
 # Sample Dataset
 
 # Step 1 — Create Sample Table
