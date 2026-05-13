@@ -1,4 +1,4 @@
-# Databricks Delta Live Tables (DLT) — Complete Guide
+# Delta Live Tables (DLT)
 
 This document explains:
 
