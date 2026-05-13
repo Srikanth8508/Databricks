@@ -1,7 +1,7 @@
 # Databricks Structured Streaming — Bronze → Silver → Gold Pipeline
 
 > **Architecture:** Azure Data Lake Storage → Bronze → Silver → Gold
-> **Pattern:** Create a streaming using the pyspark
+> **Pattern:** Created a streaming pipeline using PySpark with the direct table creation method.
 
 ---
 
