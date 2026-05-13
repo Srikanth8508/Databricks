@@ -1,7 +1,7 @@
 # Databricks Structured Streaming — Bronze → Silver → Gold Pipeline
 
 > **Architecture:** Azure Data Lake Storage → Bronze → Silver → Gold
-> **Pattern:** Single Notebook Pipeline using Structured Streaming (PySpark & SQL)
+> **Pattern:** Single Notebook Pipeline using Structured Streaming (SQL)
 
 ---
 
