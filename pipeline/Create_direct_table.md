@@ -1,49 +1,39 @@
-# Databricks Structured Streaming — Single Pipeline Method
+# Databricks Structured Streaming — Bronze → Silver → Gold Pipeline
 
-> Architecture: Azure Data Lake Storage → Bronze → Silver → Gold  
-> Pattern: Single Notebook Pipeline using Structured Streaming
+> **Architecture:** Azure Data Lake Storage → Bronze → Silver → Gold
+> **Pattern:** Single Notebook Pipeline using Structured Streaming
 
 ---
 
-# Overview
+## Overview
 
-This implementation demonstrates:
+This notebook demonstrates a complete end-to-end streaming pipeline:
 
-- Sample Data Generation
-- Auto Loader
-- Structured Streaming
+- Sample JSON Data Generation
+- Auto Loader (incremental file ingestion)
 - Bronze → Silver → Gold Architecture
-- Single Notebook Pipeline
 - Delta Lake Tables
-- Incremental Processing
+- Structured Streaming with checkpointing
 
 ---
 
-# Architecture Flow
+## Architecture Flow
 
-```text
+```
 Sample JSON Data
-        ↓
-Bronze Layer
-(Raw Streaming Data)
-        ↓
-Silver Layer
-(Cleaned & Enriched Data)
-        ↓
-Gold Layer
-(Aggregated Business Metrics)
+      ↓
+Bronze Layer  →  Raw Streaming Ingestion
+      ↓
+Silver Layer  →  Cleaned & Enriched Data
+      ↓
+Gold Layer    →  Aggregated Business Metrics
 ```
 
 ---
 
-# 1. Create Storage Directory
+## Step 1 — Create Storage Directory
 
-## Description
-Creates a storage directory in Azure Data Lake Storage for storing sample JSON files.
-
-This folder acts as the streaming source location.
-
-## Command
+Creates the ADLS directory that will serve as the streaming source location.
 
 ```python
 dbutils.fs.mkdirs(
@@ -53,78 +43,51 @@ dbutils.fs.mkdirs(
 
 ---
 
-# 2. Generate Sample Streaming Data
+## Step 2 — Generate Sample Streaming Data
 
-## Description
-Creates 250 random order records and stores them as JSON files.
-
-These records simulate incoming streaming transactions.
-
-## Command
+Generates 250 random order records and writes them as a JSON file to ADLS.
 
 ```python
 import json
 import random
 
-# ------------------------------------------------------------
-# Sample Master Data
-# ------------------------------------------------------------
+# ── Master Data ────────────────────────────────────────────────────────────────
 
-customers = [
-    "Ravi", "Arjun", "Kiran", "Meena", "John",
-    "Priya", "Vijay", "Anu", "Rahul", "Sneha",
-    "Aakash", "Divya", "Manoj", "Keerthi", "Surya"
-]
+customers     = ["Ravi", "Arjun", "Kiran", "Meena", "John",
+                 "Priya", "Vijay", "Anu", "Rahul", "Sneha",
+                 "Aakash", "Divya", "Manoj", "Keerthi", "Surya"]
 
-cities = [
-    "Chennai", "Bangalore", "Hyderabad",
-    "Mumbai", "Delhi", "Pune",
-    "Kolkata", "Coimbatore"
-]
+cities        = ["Chennai", "Bangalore", "Hyderabad",
+                 "Mumbai", "Delhi", "Pune",
+                 "Kolkata", "Coimbatore"]
 
-products = [
-    "Laptop", "Mobile", "Tablet", "Watch",
-    "Headphones", "Camera", "TV", "Keyboard"
-]
+products      = ["Laptop", "Mobile", "Tablet", "Watch",
+                 "Headphones", "Camera", "TV", "Keyboard"]
 
-payment_modes = [
-    "UPI", "Card", "Cash", "NetBanking"
-]
+payment_modes = ["UPI", "Card", "Cash", "NetBanking"]
 
-status_list = [
-    "SUCCESS", "PENDING", "FAILED"
-]
+status_list   = ["SUCCESS", "PENDING", "FAILED"]
 
-# ------------------------------------------------------------
-# Generate Records
-# ------------------------------------------------------------
+# ── Generate 250 Records ───────────────────────────────────────────────────────
 
 records = []
 
 for i in range(1, 251):
-
     order = {
-        "order_id": i,
-        "customer": random.choice(customers),
-        "city": random.choice(cities),
-        "product": random.choice(products),
-        "amount": random.randint(500, 15000),
-        "quantity": random.randint(1, 5),
+        "order_id":     i,
+        "customer":     random.choice(customers),
+        "city":         random.choice(cities),
+        "product":      random.choice(products),
+        "amount":       random.randint(500, 15000),
+        "quantity":     random.randint(1, 5),
         "payment_mode": random.choice(payment_modes),
         "order_status": random.choice(status_list)
     }
-
     records.append(json.dumps(order))
 
-# ------------------------------------------------------------
-# Convert to Multiline JSON
-# ------------------------------------------------------------
+# ── Write to ADLS ──────────────────────────────────────────────────────────────
 
 data = "\n".join(records)
-
-# ------------------------------------------------------------
-# Write JSON File into ADLS
-# ------------------------------------------------------------
 
 dbutils.fs.put(
     "abfss://raw-data@databricktesdat.dfs.core.windows.net/tmp/orders/orders_bulk_250.json",
@@ -137,312 +100,162 @@ print("250 streaming JSON records created successfully")
 
 ---
 
-# 3. Bronze Layer — Raw Streaming Ingestion
+## Step 3 — Configure Pipeline (Bronze + Silver + Gold — Single Script)
 
-## Description
-Reads JSON files continuously using Auto Loader and stores raw records into the Bronze Delta table.
-
-Bronze layer stores raw unprocessed data.
-
-## Command
+All three layers are combined into one Python script. Each `writeStream` starts in the background; `awaitAnyTermination()` keeps all streams running together.
 
 ```python
+from pyspark.sql.functions import col, current_timestamp, sum, count, avg, round
+
+# ── BRONZE — Raw Streaming Ingestion ──────────────────────────────────────────
+
 bronze_df = (
-
     spark.readStream
-
          .format("cloudFiles")
-
-         .option(
-             "cloudFiles.format",
-             "json"
-         )
-
+         .option("cloudFiles.format", "json")
          .option(
              "cloudFiles.schemaLocation",
              "abfss://raw-data@databricktesdat.dfs.core.windows.net/checkpoints/schema/orders"
          )
-
-         .load(
-             "abfss://raw-data@databricktesdat.dfs.core.windows.net/tmp/orders"
-         )
+         .load("abfss://raw-data@databricktesdat.dfs.core.windows.net/tmp/orders")
 )
 
-(
+bronze_query = (
     bronze_df.writeStream
-
         .format("delta")
-
-        .option(
-            "checkpointLocation",
-            "abfss://raw-data@databricktesdat.dfs.core.windows.net/checkpoints/bronze"
-        )
-
-        .option(
-            "mergeSchema",
-            "true"
-        )
-
+        .option("checkpointLocation", "abfss://raw-data@databricktesdat.dfs.core.windows.net/checkpoints/bronze")
+        .option("mergeSchema", "true")
         .outputMode("append")
-
         .table("orders_schema.bronze_orders")
 )
-```
 
----
-
-# 4. Silver Layer — Cleaned and Enriched Data
-
-## Description
-Reads streaming data from the Bronze table and applies filtering, validation, and enrichment logic.
-
-Silver layer contains clean business-ready records.
-
-## Command
-
-```python
-from pyspark.sql.functions import (
-    col,
-    current_timestamp
-)
+# ── SILVER — Cleaned & Enriched Data ──────────────────────────────────────────
 
 silver_df = (
-
     spark.readStream
-
          .table("orders_schema.bronze_orders")
 
-         # ----------------------------------------------------
-         # Data Quality Filters
-         # ----------------------------------------------------
+         # ── Data Quality Filters ───────────────────────────────────────────
+         .filter(col("amount") > 1000)
+         .filter(col("customer").isNotNull())
+         .filter(col("order_status") == "SUCCESS")
 
-         .filter(
-             col("amount") > 1000
-         )
-
-         .filter(
-             col("customer").isNotNull()
-         )
-
-         .filter(
-             col("order_status") == "SUCCESS"
-         )
-
-         # ----------------------------------------------------
-         # Select Required Columns
-         # ----------------------------------------------------
-
+         # ── Select Required Columns ────────────────────────────────────────
          .select(
-             "order_id",
-             "customer",
-             "city",
-             "product",
-             "quantity",
-             "payment_mode",
-             "amount",
-             "order_status"
+             "order_id", "customer", "city", "product",
+             "quantity", "payment_mode", "amount", "order_status"
          )
 
-         # ----------------------------------------------------
-         # Derived Column
-         # ----------------------------------------------------
-
-         .withColumn(
-             "total_price",
-             col("amount") * col("quantity")
-         )
-
-         # ----------------------------------------------------
-         # Processing Timestamp
-         # ----------------------------------------------------
-
-         .withColumn(
-             "processed_time",
-             current_timestamp()
-         )
+         # ── Derived Columns ────────────────────────────────────────────────
+         .withColumn("total_price",    col("amount") * col("quantity"))
+         .withColumn("processed_time", current_timestamp())
 )
 
-(
+silver_query = (
     silver_df.writeStream
-
              .format("delta")
-
-             .option(
-                 "checkpointLocation",
-                 "abfss://raw-data@databricktesdat.dfs.core.windows.net/checkpoints/silver"
-             )
-
+             .option("checkpointLocation", "abfss://raw-data@databricktesdat.dfs.core.windows.net/checkpoints/silver")
              .outputMode("append")
-
              .table("orders_schema.silver_orders")
 )
-```
 
----
-
-# 5. Gold Layer — Aggregated Metrics
-
-## Description
-Reads streaming data from the Silver table and creates aggregated business metrics.
-
-Gold layer is optimized for dashboards and analytics.
-
-## Command
-
-```python
-from pyspark.sql.functions import (
-    sum,
-    count,
-    avg,
-    round
-)
+# ── GOLD — Aggregated Business Metrics ────────────────────────────────────────
 
 gold_df = (
-
     spark.readStream
-
          .table("orders_schema.silver_orders")
-
-         .groupBy(
-             "city",
-             "product"
-         )
-
+         .groupBy("city", "product")
          .agg(
-
-             count("order_id")
-                 .alias("total_orders"),
-
-             sum("total_price")
-                 .alias("total_revenue"),
-
-             round(
-                 avg("total_price"),
-                 2
-             ).alias("avg_order_value")
+             count("order_id")            .alias("total_orders"),
+             sum("total_price")           .alias("total_revenue"),
+             round(avg("total_price"), 2) .alias("avg_order_value")
          )
 )
 
-(
+gold_query = (
     gold_df.writeStream
-
            .format("delta")
-
            .outputMode("complete")
-
-           .option(
-               "checkpointLocation",
-               "abfss://raw-data@databricktesdat.dfs.core.windows.net/checkpoints/gold"
-           )
-
+           .option("checkpointLocation", "abfss://raw-data@databricktesdat.dfs.core.windows.net/checkpoints/gold")
            .table("orders_schema.gold_orders")
 )
+
+# ── WAIT FOR ALL STREAMS ───────────────────────────────────────────────────────
+
+spark.streams.awaitAnyTermination()
 ```
+
+> **Bronze** → raw ingestion | **Silver** → filtered & enriched | **Gold** → aggregated metrics
+> All three streams run concurrently. `awaitAnyTermination()` keeps the notebook alive until any stream stops or fails.
 
 ---
 
-# 6. Validate Bronze Output
+## Step 4 — Validate Outputs
 
-## Query
+### Bronze
 
 ```sql
-SELECT *
-FROM orders_schema.bronze_orders
+SELECT * FROM orders_schema.bronze_orders;
 ```
 
-## Sample Output
+| order_id | customer | city      | product | amount | quantity | payment_mode | order_status |
+|----------|----------|-----------|---------|--------|----------|--------------|--------------|
+| 1        | Ravi     | Chennai   | Laptop  | 5686   | 2        | UPI          | SUCCESS      |
+| 2        | Meena    | Delhi     | Mobile  | 5483   | 1        | Card         | SUCCESS      |
+| 3        | Vijay    | Ahmedabad | TV      | 8087   | 3        | Cash         | PENDING      |
+| 4        | Divya    | Hyderabad | Camera  | 4400   | 1        | NetBanking   | SUCCESS      |
 
-| order_id | customer | city | product | amount | quantity | payment_mode | order_status |
-|---|---|---|---|---|---|---|---|
-| 1 | Ravi | Chennai | Laptop | 5686 | 2 | UPI | SUCCESS |
-| 2 | Meena | Delhi | Mobile | 5483 | 1 | Card | SUCCESS |
-| 3 | Vijay | Ahmedabad | TV | 8087 | 3 | Cash | PENDING |
-| 4 | Divya | Hyderabad | Camera | 4400 | 1 | NetBanking | SUCCESS |
-
----
-
-# 7. Validate Silver Output
-
-## Query
+### Silver
 
 ```sql
-SELECT *
-FROM orders_schema.silver_orders
+SELECT * FROM orders_schema.silver_orders;
 ```
 
-## Sample Output
+| order_id | customer | city      | product | amount | quantity | total_price |
+|----------|----------|-----------|---------|--------|----------|-------------|
+| 1        | Ravi     | Chennai   | Laptop  | 5686   | 2        | 11372       |
+| 2        | Meena    | Delhi     | Mobile  | 5483   | 1        | 5483        |
+| 4        | Divya    | Hyderabad | Camera  | 4400   | 1        | 4400        |
+| 6        | Rahul    | Mumbai    | Watch   | 7540   | 3        | 22620       |
 
-| order_id | customer | city | product | amount | quantity | total_price |
-|---|---|---|---|---|---|---|
-| 1 | Ravi | Chennai | Laptop | 5686 | 2 | 11372 |
-| 2 | Meena | Delhi | Mobile | 5483 | 1 | 5483 |
-| 4 | Divya | Hyderabad | Camera | 4400 | 1 | 4400 |
-| 6 | Rahul | Mumbai | Watch | 7540 | 3 | 22620 |
-
----
-
-# 8. Validate Gold Output
-
-## Query
+### Gold
 
 ```sql
-SELECT *
-FROM orders_schema.gold_orders
+SELECT * FROM orders_schema.gold_orders;
 ```
 
-## Sample Output
-
-| city | product | total_orders | total_revenue | avg_order_value |
-|---|---|---|---|---|
-| Chennai | Laptop | 4 | 45280 | 11320 |
-| Mumbai | Watch | 7 | 67860 | 9694.29 |
-| Pune | Tablet | 5 | 51200 | 10240 |
-| Delhi | Mobile | 6 | 38900 | 6483.33 |
+| city    | product | total_orders | total_revenue | avg_order_value |
+|---------|---------|--------------|---------------|-----------------|
+| Chennai | Laptop  | 4            | 45280         | 11320.00        |
+| Mumbai  | Watch   | 7            | 67860         | 9694.29         |
+| Pune    | Tablet  | 5            | 51200         | 10240.00        |
+| Delhi   | Mobile  | 6            | 38900         | 6483.33         |
 
 ---
 
-# Complete Pipeline Flow
+## Key Concepts
 
-```text
-orders_bulk_250.json
-        ↓
-
-Bronze Layer
-(Raw Streaming Data)
-        ↓
-
-Silver Layer
-(Cleaned & Enriched Data)
-        ↓
-
-Gold Layer
-(Aggregated Metrics)
-```
+| Concept              | Description                                      |
+|----------------------|--------------------------------------------------|
+| Structured Streaming | Real-time stream processing engine in Spark      |
+| Auto Loader          | Incremental file ingestion using `cloudFiles`    |
+| Bronze Layer         | Raw ingestion — stores data as-is                |
+| Silver Layer         | Cleaned & enriched — filtered business records   |
+| Gold Layer           | Aggregated reporting layer for dashboards        |
+| Delta Lake           | Transactional storage with ACID guarantees       |
+| Checkpointing        | Ensures fault tolerance and exactly-once delivery|
+| Append Mode          | Adds new records without modifying existing ones |
+| Complete Mode        | Rewrites the full aggregated output each trigger |
 
 ---
 
-# Important Concepts
+## Pipeline Row Statistics
 
-| Concept | Description |
-|---|---|
-| Structured Streaming | Real-time stream processing |
-| Auto Loader | Incremental file ingestion |
-| Bronze Layer | Raw ingestion layer |
-| Silver Layer | Cleaned & enriched layer |
-| Gold Layer | Aggregated reporting layer |
-| Delta Lake | Transactional storage layer |
-| Checkpointing | Fault tolerance and recovery |
-| Append Mode | Adds new records incrementally |
-| Complete Mode | Rewrites full aggregation output |
+| Layer  | Approx. Rows | Notes                        |
+|--------|--------------|------------------------------|
+| Bronze | 250          | All raw incoming records     |
+| Silver | ~90          | SUCCESS records, amount >1000|
+| Gold   | ~40          | Aggregated city-product rows |
 
 ---
 
-# Pipeline Statistics
-
-| Layer | Approx Rows | Description |
-|---|---|---|
-| Bronze | 250 | Raw streaming records |
-| Silver | ~90 | Filtered SUCCESS records |
-| Gold | ~40 | Aggregated business metrics |
-
----
