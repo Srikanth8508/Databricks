@@ -16,7 +16,7 @@ This folder acts as the landing zone for INSERT, UPDATE, and DELETE events.
 
 ```python
 dbutils.fs.mkdirs(
-    "abfss://raw-data@databricktesdat.dfs.core.windows.net/dlt/orders/"
+    "abfss://raw-data@databricktesdat.dfs.core.windows.net/dlt/orders_1/"
 )
 ```
 
@@ -96,7 +96,7 @@ data = "\n".join(records)
 # ------------------------------------------------------------
 
 dbutils.fs.put(
-    "abfss://raw-data@databricktesdat.dfs.core.windows.net/dlt/orders/orders1.json",
+    "abfss://raw-data@databricktesdat.dfs.core.windows.net/dlt/orders_1/orders1.json",
     data,
     True
 )
@@ -188,7 +188,7 @@ data = "\n".join([
 # ------------------------------------------------------------
 
 dbutils.fs.put(
-    "abfss://raw-data@databricktesdat.dfs.core.windows.net/dlt/orders/orders2.json",
+    "abfss://raw-data@databricktesdat.dfs.core.windows.net/dlt/orders_1/orders2.json",
     data,
     True
 )
@@ -288,9 +288,9 @@ BASE_PATH = (
     f"{STORAGE_ACCOUNT}.dfs.core.windows.net"
 )
 
-ORDERS_PATH = f"{BASE_PATH}/dlt/orders/"
+ORDERS_PATH = f"{BASE_PATH}/dlt/orders_1/"
 
-SCHEMA_PATH = f"{BASE_PATH}/dlt/schema/orders"
+SCHEMA_PATH = f"{BASE_PATH}/dlt/schema/orders_1"
 
 # ------------------------------------------------------------
 # Bronze Layer
