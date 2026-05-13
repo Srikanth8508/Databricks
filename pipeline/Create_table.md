@@ -243,24 +243,6 @@ SELECT * FROM orders_schema.gold_orders;
 
 ---
 
-## Key Concepts
-
-| Concept                 | Description                                            |
-|-------------------------|--------------------------------------------------------|
-| Structured Streaming    | Real-time stream processing engine in Spark            |
-| Auto Loader             | Incremental file ingestion using `cloudFiles`          |
-| Bronze Layer            | Raw ingestion — stores data as-is                      |
-| Silver Layer            | Cleaned & enriched — filtered business records         |
-| Gold Layer              | Aggregated reporting layer for dashboards              |
-| Delta Lake              | Transactional storage with ACID guarantees             |
-| Checkpointing           | Ensures fault tolerance and exactly-once delivery      |
-| Append Mode             | Adds new records without modifying existing ones       |
-| Complete Mode           | Rewrites the full aggregated output each trigger       |
-| Delta Live Tables (DLT) | SQL-native declarative pipeline framework in Databricks|
-| STREAMING TABLE         | SQL equivalent of PySpark `writeStream` append mode    |
-| MATERIALIZED VIEW       | SQL equivalent of PySpark `outputMode("complete")`     |
-
----
 
 ## Pipeline Row Statistics
 
