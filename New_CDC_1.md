@@ -1,48 +1,16 @@
-# Databricks Delta Live Tables (DLT) with CDC — Complete Setup Guide
+# Databricks Delta Live Tables (DLT) CDC Pipeline — Complete Updated Code
 
-> **Architecture:** Azure Data Lake Storage → Bronze (CDC) → Silver (SCD Type 1) → Gold  
-> **Pattern:** Multi-hop Medallion Architecture with Change Data Capture (CDC)
-
----
-
-# Overview
-
-This guide demonstrates:
-
-- Delta Live Tables (DLT)
-- Multi-Hop Architecture
-- Auto Loader
-- CDC Processing
-- `dlt.apply_changes()`
-- SCD Type 1 Processing
-- Bronze → Silver → Gold Flow
-- Incremental Streaming Pipelines
+> Architecture: Azure Data Lake Storage → Bronze → Silver → Silver Enriched → Gold  
+> Pattern: Multi-Hop CDC Pipeline using Delta Live Tables and SCD Type 1
 
 ---
 
-# CDC Architecture Flow
-
-```text
-ADLS JSON Files
-        ↓
-Bronze Layer
-(Raw CDC Events)
-        ↓
-Silver Layer
-(SCD Type 1 Latest State)
-        ↓
-Gold Layer
-(Business Aggregations)
-```
-
----
-
-# 1. Create Storage Directory
+# 1. Create ADLS Directory
 
 ## Description
-Creates a storage directory in Azure Data Lake Storage for storing CDC JSON files.
+Creates the source directory in Azure Data Lake Storage for storing CDC JSON files.
 
-This directory acts as the landing zone for incoming INSERT, UPDATE, and DELETE events.
+This folder acts as the landing zone for INSERT, UPDATE, and DELETE events.
 
 ## Command
 
@@ -52,32 +20,14 @@ dbutils.fs.mkdirs(
 )
 ```
 
-## Purpose
-- Creates source CDC storage location
-- Stores incoming CDC files
-
 ---
 
 # 2. Generate Initial CDC INSERT Records
 
 ## Description
-Generates 100 initial INSERT records with CDC metadata columns.
+Creates 100 initial INSERT events with CDC metadata columns.
 
-Each event contains operation type and sequence number required for CDC processing.
-
-## Enhanced CDC Schema
-
-| Field | Type | Description |
-|---|---|---|
-| `order_id` | Integer | Unique order identifier |
-| `customer` | String | Customer name |
-| `city` | String | Customer city |
-| `amount` | Integer | Order amount |
-| `order_time` | Timestamp | Order timestamp |
-| `_operation` | String | CDC operation type |
-| `_sequence_num` | Long | Event ordering sequence |
-
----
+Each record contains `_operation` and `_sequence_num` required for CDC processing.
 
 ## Command
 
@@ -86,17 +36,30 @@ import json
 import random
 from datetime import datetime, timedelta
 
+# ------------------------------------------------------------
+# Sample Master Data
+# ------------------------------------------------------------
+
 customers = [
     "Ravi", "Arjun", "Kiran", "Meena", "John",
     "Priya", "Vijay", "Anu", "Rahul", "Sneha",
-    "Aakash", "Divya", "Manoj", "Keerthi", "Suresh"
+    "Aakash", "Divya", "Manoj", "Keerthi"
 ]
 
 cities = [
-    "Chennai", "Bangalore", "Hyderabad",
-    "Mumbai", "Delhi", "Pune",
-    "Kolkata", "Ahmedabad"
+    "Chennai",
+    "Bangalore",
+    "Hyderabad",
+    "Mumbai",
+    "Delhi",
+    "Pune",
+    "Kolkata",
+    "Ahmedabad"
 ]
+
+# ------------------------------------------------------------
+# Generate CDC INSERT Records
+# ------------------------------------------------------------
 
 records = []
 
@@ -104,17 +67,13 @@ base_time = datetime(2025, 5, 12, 10, 0, 0)
 
 sequence_num = 1
 
-# ------------------------------------------------------------
-# Generate Initial INSERT Events
-# ------------------------------------------------------------
-
 for i in range(1, 101):
 
-    record = {
+    order = {
         "order_id": i,
         "customer": random.choice(customers),
         "city": random.choice(cities),
-        "amount": random.randint(500, 10000),
+        "amount": random.randint(1000, 10000),
         "order_time": (
             base_time + timedelta(minutes=i)
         ).strftime("%Y-%m-%d %H:%M:%S"),
@@ -122,11 +81,19 @@ for i in range(1, 101):
         "_sequence_num": sequence_num
     }
 
-    records.append(json.dumps(record))
+    records.append(json.dumps(order))
 
     sequence_num += 1
 
+# ------------------------------------------------------------
+# Convert to Multiline JSON
+# ------------------------------------------------------------
+
 data = "\n".join(records)
+
+# ------------------------------------------------------------
+# Write File into ADLS
+# ------------------------------------------------------------
 
 dbutils.fs.put(
     "abfss://raw-data@databricktesdat.dfs.core.windows.net/dlt/orders/orders1.json",
@@ -134,21 +101,17 @@ dbutils.fs.put(
     True
 )
 
-print(f"Created orders1.json with {len(records)} INSERT operations")
+print(f"Created orders1.json with {len(records)} INSERT events")
 ```
-
-## Purpose
-- Simulates initial CDC INSERT events
-- Creates source CDC streaming data
 
 ---
 
-# 3. Generate UPDATE and DELETE CDC Events
+# 3. Generate CDC UPDATE and DELETE Events
 
 ## Description
-Creates UPDATE and DELETE events for existing orders.
+Creates additional CDC events for UPDATE and DELETE operations.
 
-This simulates real-world CDC changes arriving after the initial load.
+These events simulate real-time changes after the initial load.
 
 ## Command
 
@@ -172,14 +135,19 @@ for _ in range(10):
     cdc_events.append({
         "order_id": order_id,
         "customer": random.choice([
-            "Ravi", "Priya", "Arjun", "Meena",
-            "John", "Vijay", "Anu"
+            "Ravi", "Priya", "Arjun",
+            "Meena", "Vijay", "Rahul"
         ]),
         "city": random.choice([
-            "Chennai", "Mumbai", "Delhi"
+            "Chennai",
+            "Mumbai",
+            "Delhi",
+            "Pune"
         ]),
-        "amount": random.randint(1500, 12000),
-        "order_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "amount": random.randint(2000, 12000),
+        "order_time": datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        ),
         "_operation": "UPDATE",
         "_sequence_num": sequence_num
     })
@@ -206,10 +174,18 @@ for _ in range(5):
 
     sequence_num += 1
 
+# ------------------------------------------------------------
+# Convert to JSON String
+# ------------------------------------------------------------
+
 data = "\n".join([
     json.dumps(event)
     for event in cdc_events
 ])
+
+# ------------------------------------------------------------
+# Write CDC Events File
+# ------------------------------------------------------------
 
 dbutils.fs.put(
     "abfss://raw-data@databricktesdat.dfs.core.windows.net/dlt/orders/orders2.json",
@@ -218,22 +194,14 @@ dbutils.fs.put(
 )
 
 print(
-    f"Created orders2.json with {len(cdc_events)} CDC events"
+    f"Created orders2.json with "
+    f"{len(cdc_events)} CDC events"
 )
 ```
-
-## Purpose
-- Simulates CDC UPDATE operations
-- Simulates CDC DELETE operations
 
 ---
 
 # 4. Create DLT Pipeline
-
-## Description
-Creates a Delta Live Tables pipeline from the Databricks UI.
-
-DLT automatically manages dependencies, orchestration, retries, monitoring, and execution.
 
 ## Steps
 
@@ -245,18 +213,9 @@ Create
 ETL Pipeline
 ```
 
-## Purpose
-- Creates managed DLT workflow
-- Automates CDC processing pipeline
-
 ---
 
 # 5. Configure Pipeline Settings
-
-## Description
-Configure pipeline mode, default schema, and Azure storage authentication.
-
-These configurations allow DLT to securely access Azure Data Lake Storage.
 
 ## Steps
 
@@ -268,23 +227,15 @@ Pipeline Mode
 
    ↓
 Select Default Schema
+orders_schema
 
    ↓
 Add Configuration Values
 ```
 
-## Purpose
-- Configures pipeline execution behavior
-- Enables secure storage connectivity
-
 ---
 
 # 6. Add Azure OAuth Configuration
-
-## Description
-Adds Azure OAuth Service Principal configurations for ADLS access.
-
-These settings authenticate DLT pipelines securely.
 
 ## Configuration
 
@@ -300,18 +251,14 @@ spark.hadoop.fs.azure.account.oauth2.client.secret.databricktesdat.dfs.core.wind
 spark.hadoop.fs.azure.account.oauth2.client.endpoint.databricktesdat.dfs.core.windows.net=https://login.microsoftonline.com/6d5176bef049/oauth2/token
 ```
 
-## Purpose
-- Authenticates Azure storage access
-- Allows DLT to read/write ADLS files
-
 ---
 
 # 7. Complete DLT CDC Pipeline Code
 
 ## Description
-Processes CDC events using `dlt.apply_changes()`.
+Processes CDC events using `dlt.apply_changes()` and maintains the latest SCD Type 1 table state.
 
-The Silver table automatically handles UPSERT and DELETE operations using SCD Type 1 logic.
+---
 
 ## Command
 
@@ -320,12 +267,12 @@ import dlt
 
 from pyspark.sql.functions import (
     col,
-    sum,
     count,
+    sum,
     avg,
     round,
-    to_date,
-    expr
+    expr,
+    to_date
 )
 
 # ------------------------------------------------------------
@@ -336,31 +283,39 @@ STORAGE_ACCOUNT = "databricktesdat"
 
 CONTAINER = "raw-data"
 
-ORDERS_PATH = (
+BASE_PATH = (
     f"abfss://{CONTAINER}@"
     f"{STORAGE_ACCOUNT}.dfs.core.windows.net"
-    "/dlt/orders/"
 )
+
+ORDERS_PATH = f"{BASE_PATH}/dlt/orders/"
+
+SCHEMA_PATH = f"{BASE_PATH}/dlt/schema/orders"
 
 # ------------------------------------------------------------
 # Bronze Layer
 # ------------------------------------------------------------
 
 @dlt.table(
-    name="bronze_orders",
-    comment="Raw CDC event stream"
+    name="bronze_orders_1",
+    comment="Raw CDC event stream from ADLS"
 )
 
-def bronze_orders():
+def bronze_orders_1():
 
     return (
+
         spark.readStream
+
              .format("cloudFiles")
+
              .option("cloudFiles.format", "json")
+
              .option(
                  "cloudFiles.schemaLocation",
-                 f"{ORDERS_PATH}_schema"
+                 SCHEMA_PATH
              )
+
              .load(ORDERS_PATH)
     )
 
@@ -369,20 +324,29 @@ def bronze_orders():
 # ------------------------------------------------------------
 
 dlt.create_streaming_table(
-    name="silver_orders",
-    comment="Current state of orders"
+    name="silver_orders_1",
+    comment="Current active order state using SCD Type 1"
 )
 
 dlt.apply_changes(
-    target="silver_orders",
-    source="bronze_orders",
+
+    target="silver_orders_1",
+
+    source="bronze_orders_1",
+
     keys=["order_id"],
+
     sequence_by=col("_sequence_num"),
-    apply_as_deletes=expr("_operation = 'DELETE'"),
+
+    apply_as_deletes=expr(
+        "_operation = 'DELETE'"
+    ),
+
     except_column_list=[
         "_operation",
         "_sequence_num"
     ],
+
     stored_as_scd_type=1
 )
 
@@ -392,15 +356,18 @@ dlt.apply_changes(
 
 @dlt.table(
     name="silver_orders_enriched",
-    comment="Validated and enriched orders"
+    comment="Validated and enriched order dataset"
 )
 
 def silver_orders_enriched():
 
     return (
-        dlt.read("silver_orders")
 
-           .filter(col("amount") > 1000)
+        dlt.read("silver_orders_1")
+
+           .filter(
+               col("amount") > 1000
+           )
 
            .withColumn(
                "order_date",
@@ -413,48 +380,44 @@ def silver_orders_enriched():
 # ------------------------------------------------------------
 
 @dlt.table(
-    name="gold_revenue",
-    comment="Revenue summary by customer and city"
+    name="gold_orders_1",
+    comment="Customer and city level revenue summary"
 )
 
-def gold_revenue():
+def gold_orders_1():
 
     return (
+
         dlt.read("silver_orders_enriched")
 
-           .groupBy("customer", "city")
+           .groupBy(
+               "customer",
+               "city"
+           )
 
            .agg(
+
                count("order_id")
                    .alias("total_orders"),
 
                sum("amount")
                    .alias("total_revenue"),
 
-               round(avg("amount"), 2)
-                   .alias("avg_order_value")
+               round(
+                   avg("amount"),
+                   2
+               ).alias("avg_order_value")
            )
 
            .orderBy(
-               "total_revenue",
-               ascending=False
+               col("total_revenue").desc()
            )
     )
 ```
 
-## Purpose
-- Handles CDC UPSERT operations
-- Handles CDC DELETE operations
-- Maintains latest SCD Type 1 table state
-
 ---
 
 # 8. Perform Dry Run
-
-## Description
-Validates the DLT CDC pipeline before execution.
-
-Checks dependencies, permissions, syntax, and table flow.
 
 ## Steps
 
@@ -463,17 +426,12 @@ Click Dry Run
 ```
 
 ## Purpose
-- Detects configuration issues
-- Validates CDC pipeline setup
+- Validates pipeline syntax
+- Checks dependencies and permissions
 
 ---
 
-# 9. Run the Pipeline
-
-## Description
-Starts the DLT CDC pipeline.
-
-The pipeline automatically processes CDC events incrementally.
+# 9. Run Pipeline
 
 ## Steps
 
@@ -482,12 +440,88 @@ Click Start / Run Pipeline
 ```
 
 ## Purpose
-- Executes CDC workflow
-- Starts incremental CDC processing
+- Starts CDC processing
+- Creates Bronze, Silver, and Gold tables
 
 ---
 
-# CDC Processing Flow
+# 10. Validate Bronze Output
+
+## Query
+
+```sql
+SELECT *
+FROM orders_schema.bronze_orders_1
+```
+
+## Sample Output
+
+| _operation | _sequence_num | amount | city | customer | order_id |
+|---|---|---|---|---|---|
+| INSERT | 1 | 5686 | Chennai | Kiran | 1 |
+| INSERT | 2 | 5483 | Delhi | Meena | 2 |
+| INSERT | 3 | 8087 | Ahmedabad | Vijay | 3 |
+
+---
+
+# 11. Validate Silver Output
+
+## Query
+
+```sql
+SELECT *
+FROM orders_schema.silver_orders_1
+```
+
+## Sample Output
+
+| amount | city | customer | order_id |
+|---|---|---|---|
+| 5686 | Chennai | Kiran | 1 |
+| 3104 | Pune | Ravi | 10 |
+| 7540 | Mumbai | Rahul | 100 |
+
+---
+
+# 12. Validate Silver Enriched Output
+
+## Query
+
+```sql
+SELECT *
+FROM orders_schema.silver_orders_enriched
+```
+
+## Sample Output
+
+| amount | city | customer | order_date |
+|---|---|---|---|
+| 5686 | Chennai | Kiran | 2025-05-12 |
+| 3104 | Pune | Ravi | 2025-05-12 |
+| 7540 | Mumbai | Rahul | 2025-05-12 |
+
+---
+
+# 13. Validate Gold Output
+
+## Query
+
+```sql
+SELECT *
+FROM orders_schema.gold_orders_1
+```
+
+## Sample Output
+
+| customer | city | total_orders | total_revenue | avg_order_value |
+|---|---|---|---|---|
+| Vijay | Ahmedabad | 1 | 8087 | 8087 |
+| Manoj | Bangalore | 2 | 11710 | 5855 |
+| Anu | Delhi | 2 | 10434 | 5217 |
+
+---
+
+# Complete CDC Flow
 
 ```text
 orders1.json
@@ -495,7 +529,7 @@ orders1.json
         ↓
 
 orders2.json
-(10 UPDATE + 5 DELETE Events)
+(UPDATE + DELETE Events)
         ↓
 
 Bronze Layer
@@ -503,54 +537,20 @@ Bronze Layer
         ↓
 
 dlt.apply_changes()
+(SCD Type 1 Merge)
         ↓
 
 Silver Layer
-(SCD Type 1 Current State)
+(Current Latest State)
         ↓
 
 Silver Enriched Layer
-(Validated Business Data)
+(Business Transformations)
         ↓
 
 Gold Layer
-(Business Aggregations)
+(Aggregated Business Metrics)
 ```
-
----
-
-# Expected Bronze Output
-
-| order_id | customer | amount | _operation | _sequence_num |
-|---|---|---|---|---|
-| 1 | Ravi | 3200 | INSERT | 1 |
-| 5 | Vijay | 8200 | UPDATE | 101 |
-| 12 | NULL | NULL | DELETE | 111 |
-
----
-
-# Expected Silver Output
-
-| order_id | customer | city | amount |
-|---|---|---|---|
-| 1 | Ravi | Chennai | 3200 |
-| 5 | Vijay | Delhi | 8200 |
-
-Characteristics:
-
-- Latest state maintained
-- DELETE records removed
-- CDC metadata columns excluded
-- Old values overwritten using SCD Type 1
-
----
-
-# Expected Gold Output
-
-| customer | city | total_orders | total_revenue | avg_order_value |
-|---|---|---|---|---|
-| Vijay | Delhi | 5 | 32400 | 6480.00 |
-| Priya | Mumbai | 3 | 21350 | 7116.67 |
 
 ---
 
@@ -558,104 +558,14 @@ Characteristics:
 
 | Concept | Description |
 |---|---|
-| `dlt.apply_changes()` | Handles CDC merges automatically |
-| `keys` | Primary key used for merge |
-| `sequence_by` | Maintains latest event ordering |
-| `apply_as_deletes` | Deletes matching records |
-| `stored_as_scd_type=1` | Maintains latest row only |
+| `dlt.apply_changes()` | Handles CDC merge automatically |
+| `keys` | Primary key for merge |
+| `sequence_by` | Maintains latest event order |
+| `apply_as_deletes` | Deletes matching rows |
+| `stored_as_scd_type=1` | Maintains latest record only |
 | Bronze Layer | Raw CDC event storage |
-| Silver Layer | Latest clean state |
-| Gold Layer | Aggregated analytics layer |
-| SCD Type 1 | Overwrites old values |
-| CDC | Tracks INSERT/UPDATE/DELETE operations |
-
----
-
-# CDC Architecture Summary
-
-```text
-ADLS
- ├── orders1.json (INSERT events)
- └── orders2.json (UPDATE + DELETE events)
-            ↓
-
-Bronze Layer
-(Raw CDC Events)
-            ↓
-
-apply_changes()
-(keys + sequence handling)
-            ↓
-
-Silver Layer
-(Current State Table)
-            ↓
-
-Business Transformations
-            ↓
-
-Gold Layer
-(Analytics & Reporting)
-```
-
----
-
-# Testing CDC Flow
-
-## Step 1 — Initial Load
-
-```python
-# Run pipeline after creating orders1.json
-
-# Bronze:
-100 INSERT events
-
-# Silver:
-Current active records
-
-# Gold:
-Revenue aggregations
-```
-
----
-
-## Step 2 — Process CDC Changes
-
-```python
-# Add orders2.json
-
-# Bronze:
-INSERT + UPDATE + DELETE events
-
-# Silver:
-Updated latest state
-
-# Gold:
-Updated business metrics
-```
-
----
-
-## Step 3 — Validate CDC Merge
-
-```sql
--- Check updated order
-
-SELECT *
-FROM silver_orders
-WHERE order_id = 5;
-
--- Verify deleted order
-
-SELECT *
-FROM silver_orders
-WHERE order_id = 12;
-
--- Validate Gold aggregation
-
-SELECT *
-FROM gold_revenue;
-```
+| Silver Layer | Latest merged state |
+| Gold Layer | Aggregated reporting layer |
 
 ---
 
@@ -664,15 +574,12 @@ FROM gold_revenue;
 This implementation demonstrates:
 
 - Delta Live Tables
-- CDC pipelines
-- Bronze → Silver → Gold architecture
-- Auto Loader ingestion
-- `dlt.apply_changes()`
-- SCD Type 1 processing
-- Incremental streaming
-- Business aggregations
+- CDC Pipelines
+- Bronze → Silver → Gold Architecture
+- Auto Loader
+- SCD Type 1 Processing
+- Incremental Streaming
+- CDC Merge Processing
+- Business Aggregation Pipelines
 
 ---
-
-Reference source from uploaded markdown file:
-:contentReference[oaicite:0]{index=0}
