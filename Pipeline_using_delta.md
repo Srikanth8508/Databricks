@@ -1,4 +1,3 @@
-````md id="s7pl2x"
 # Databricks Delta Live Tables (DLT) Pipeline — Complete Setup Guide
 
 ---
@@ -11,9 +10,10 @@ Creates a directory in Azure Data Lake Storage for storing raw order JSON files.
 This folder acts as the landing zone for incoming files that will be processed by the DLT pipeline.
 
 ## Command
+
 ```python
 dbutils.fs.mkdirs(
-  "abfss://raw-data@databricktesdat.dfs.core.windows.net/dlt/orders/"
+    "abfss://raw-data@databricktesdat.dfs.core.windows.net/dlt/orders/"
 )
 ```
 
@@ -31,6 +31,7 @@ Creates sample order data and writes it into the ADLS folder as a JSON file.
 This data will be used as the input source for the Bronze table in the DLT pipeline.
 
 ## Command
+
 ```python
 data = """
 {"order_id":1,"customer":"Ravi","amount":1200}
@@ -40,9 +41,9 @@ data = """
 """
 
 dbutils.fs.put(
-  "abfss://raw-data@databricktesdat.dfs.core.windows.net/dlt/orders/orders.json",
-  data,
-  True
+    "abfss://raw-data@databricktesdat.dfs.core.windows.net/dlt/orders/orders.json",
+    data,
+    True
 )
 ```
 
@@ -60,6 +61,7 @@ Creates a Delta Live Tables pipeline from the Databricks UI.
 The pipeline manages orchestration, dependency handling, monitoring, and execution automatically.
 
 ## Steps
+
 ```text
 Click Jobs & Pipelines
         ↓
@@ -81,7 +83,8 @@ Configure the pipeline mode, catalog/schema, and authentication settings.
 
 These settings allow the DLT pipeline to securely access Azure Data Lake Storage.
 
-## Configuration Steps
+## Steps
+
 ```text
 Settings
    ↓
@@ -106,6 +109,7 @@ Adds OAuth authentication details required for accessing the ADLS storage accoun
 These configurations authenticate the DLT pipeline using Azure Service Principal credentials.
 
 ## Configuration
+
 ```properties
 spark.hadoop.fs.azure.account.auth.type.databricktesdat.dfs.core.windows.net=OAuth
 
@@ -124,17 +128,22 @@ spark.hadoop.fs.azure.account.oauth2.client.endpoint.databricktesdat.dfs.core.wi
 
 ---
 
-# 6. Create Bronze Layer
+# 6. Paste DLT Python Code
 
 ## Description
-Reads raw JSON files from ADLS using Auto Loader and stores them in the Bronze table.
+Create a Python notebook or Python file and paste the DLT pipeline code.
 
-Bronze layer captures raw incoming data without transformations.
+This code creates Bronze, Silver, and Gold layers using Delta Live Tables.
 
 ## Command
+
 ```python
 import dlt
 from pyspark.sql.functions import *
+
+# ------------------------------------------------------------
+# Bronze Layer
+# ------------------------------------------------------------
 
 @dlt.table(
     name="bronze_orders",
@@ -150,23 +159,11 @@ def bronze_orders():
                  "abfss://raw-data@databricktesdat.dfs.core.windows.net/dlt/orders/"
              )
     )
-```
 
-## Purpose
-- Ingests raw streaming files
-- Creates the Bronze ingestion layer
+# ------------------------------------------------------------
+# Silver Layer
+# ------------------------------------------------------------
 
----
-
-# 7. Create Silver Layer
-
-## Description
-Reads streaming data from the Bronze table and applies data quality validation.
-
-Records where `amount <= 1000` are automatically dropped using DLT expectations.
-
-## Command
-```python
 @dlt.table(
     name="silver_orders",
     comment="Cleaned data with quality gates"
@@ -180,23 +177,11 @@ Records where `amount <= 1000` are automatically dropped using DLT expectations.
 def silver_orders():
 
     return dlt.read_stream("bronze_orders")
-```
 
-## Purpose
-- Cleans invalid records
-- Applies data quality rules automatically
+# ------------------------------------------------------------
+# Gold Layer
+# ------------------------------------------------------------
 
----
-
-# 8. Create Gold Layer
-
-## Description
-Aggregates cleaned Silver data to generate customer-level revenue metrics.
-
-Gold layer contains summarized analytical data for reporting and dashboards.
-
-## Command
-```python
 @dlt.table(
     name="gold_revenue",
     comment="Aggregate sales by customer"
@@ -207,58 +192,60 @@ def gold_revenue():
     return (
         dlt.read("silver_orders")
 
-        .groupBy("customer")
+           .groupBy("customer")
 
-        .agg(
-            count("order_id").alias("total_orders"),
-            sum("amount").alias("total_revenue")
-        )
+           .agg(
+               count("order_id").alias("total_orders"),
+               sum("amount").alias("total_revenue")
+           )
     )
 ```
 
 ## Purpose
-- Generates business-level aggregated metrics
-- Supports reporting and analytics
+- Creates Bronze, Silver, and Gold layers
+- Processes streaming data incrementally
 
 ---
 
-# 9. Perform Dry Run
+# 7. Perform Dry Run
 
 ## Description
-Dry Run validates the pipeline configuration before actual execution.
+Dry Run validates the DLT pipeline configuration before execution.
 
-It checks dependencies, syntax, table flow, and configuration settings.
+It checks pipeline dependencies, syntax, permissions, and table flow.
 
 ## Steps
+
 ```text
 Click Dry Run
 ```
 
 ## Purpose
-- Validates pipeline configuration
-- Detects setup or syntax errors early
+- Detects configuration issues early
+- Validates pipeline setup before execution
 
 ---
 
-# 10. Run the Pipeline
+# 8. Run the Pipeline
 
 ## Description
-Executes the DLT pipeline and starts processing the data flow.
+Runs the DLT pipeline and starts processing the data automatically.
 
-The pipeline automatically creates and manages Bronze, Silver, and Gold tables.
+The pipeline creates and maintains all tables incrementally.
 
 ## Steps
+
 ```text
 Click Start / Run Pipeline
 ```
 
 ## Purpose
 - Executes the complete DLT workflow
-- Processes streaming data incrementally
+- Starts continuous or triggered data processing
 
 ---
 
-# DLT Multi-Hop Architecture Flow
+# DLT Multi-Hop Architecture
 
 ```text
 ADLS JSON Files
@@ -275,9 +262,8 @@ Gold Layer
 
 ---
 
-# Expected Output
+# Expected Bronze Output
 
-## Bronze Table
 | order_id | customer | amount |
 |---|---|---|
 | 1 | Ravi | 1200 |
@@ -287,8 +273,9 @@ Gold Layer
 
 ---
 
-## Silver Table
-(Amount > 1000 only)
+# Expected Silver Output
+
+Only records where amount > 1000 are retained.
 
 | order_id | customer | amount |
 |---|---|---|
@@ -298,7 +285,8 @@ Gold Layer
 
 ---
 
-## Gold Table
+# Expected Gold Output
+
 | customer | total_orders | total_revenue |
 |---|---|---|
 | Ravi | 1 | 1200 |
@@ -314,12 +302,11 @@ Gold Layer
 | `@dlt.table` | Creates managed DLT tables |
 | `dlt.read_stream()` | Reads streaming data incrementally |
 | `dlt.read()` | Reads batch/static table data |
-| `@dlt.expect_or_drop()` | Applies data quality rules |
+| `@dlt.expect_or_drop()` | Applies data quality validation |
 | Bronze Layer | Raw ingestion layer |
-| Silver Layer | Cleaned and validated data |
-| Gold Layer | Aggregated business data |
+| Silver Layer | Cleaned and validated layer |
+| Gold Layer | Aggregated business layer |
 | Auto Loader | Incremental file ingestion |
 | Dry Run | Validates pipeline configuration |
 
 ---
-````
