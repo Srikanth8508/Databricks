@@ -1,4 +1,4 @@
-# Databricks Delta Live Tables (DLT) CDC Pipeline — Complete Updated Code
+# Databricks Delta Live Tables (DLT) CDC Pipeline 
 
 > Architecture: Azure Data Lake Storage → Bronze → Silver → Silver Enriched → Gold  
 > Pattern: Multi-Hop CDC Pipeline using Delta Live Tables and SCD Type 1
