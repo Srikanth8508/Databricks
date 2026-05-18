@@ -49,7 +49,7 @@ Users must have `USE CATALOG` permission before accessing schemas or tables insi
 ```sql
 GRANT USE CATALOG
 ON CATALOG demo
-TO `lumieresaloonbacklink@gmail.com`;
+TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
@@ -70,7 +70,7 @@ TO `lumieresaloonbacklink@gmail.com`;
 ```sql
 GRANT ALL PRIVILEGES
 ON CATALOG demo
-TO `lumieresaloonbacklink@gmail.com`;
+TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
@@ -91,7 +91,7 @@ Users need `USE SCHEMA` permission before accessing objects inside the schema.
 ```sql
 GRANT USE SCHEMA
 ON SCHEMA demo.default
-TO `lumieresaloonbacklink@gmail.com`;
+TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
@@ -114,7 +114,7 @@ TO `lumieresaloonbacklink@gmail.com`;
 ```sql
 GRANT CREATE TABLE, MODIFY
 ON SCHEMA demo.default
-TO `lumieresaloonbacklink@gmail.com`;
+TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
@@ -135,7 +135,7 @@ These permissions control read and write operations on tables.
 ```sql
 GRANT SELECT
 ON TABLE demo.default.employee
-TO `lumieresaloonbacklink@gmail.com`;
+TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
@@ -160,7 +160,7 @@ TO `lumieresaloonbacklink@gmail.com`;
 ```sql
 GRANT ALL PRIVILEGES
 ON TABLE demo.default.employee
-TO `lumieresaloonbacklink@gmail.com`;
+TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
@@ -170,7 +170,7 @@ TO `lumieresaloonbacklink@gmail.com`;
 ```sql
 GRANT SELECT
 ON TABLE demo.default.employee
-TO `lumieresaloonbacklink@gmail.com`;
+TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
@@ -180,7 +180,7 @@ TO `lumieresaloonbacklink@gmail.com`;
 ```sql
 GRANT INSERT, UPDATE
 ON TABLE demo.default.employee
-TO `lumieresaloonbacklink@gmail.com`;
+TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
@@ -201,7 +201,7 @@ Users typically need `SELECT` permission to query a view.
 ```sql
 GRANT SELECT
 ON VIEW demo.default.sales_view
-TO `lumieresaloonbacklink@gmail.com`;
+TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
@@ -231,7 +231,7 @@ Users require `EXECUTE` permission to run functions.
 ```sql
 GRANT EXECUTE
 ON FUNCTION demo.default.calculate_tax
-TO `lumieresaloonbacklink@gmail.com`;
+TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
@@ -261,7 +261,7 @@ Used for managing file-based storage access.
 ```sql
 GRANT READ FILES
 ON VOLUME demo.default.raw_files
-TO `lumieresaloonbacklink@gmail.com`;
+TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
@@ -280,7 +280,7 @@ TO `lumieresaloonbacklink@gmail.com`;
 ```sql
 GRANT READ FILES, WRITE FILES
 ON VOLUME demo.default.raw_files
-TO `lumieresaloonbacklink@gmail.com`;
+TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
@@ -360,7 +360,7 @@ Displays all privileges granted to a user.
 ## Command
 
 ```sql
-SHOW GRANTS TO `lumieresaloonbacklink@gmail.com`;
+SHOW GRANTS TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
@@ -389,7 +389,7 @@ Removes privileges from a user.
 ```sql
 REVOKE SELECT
 ON TABLE demo.default.employee_d
-FROM `lumieresaloonbacklink@gmail.com`;
+FROM `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
