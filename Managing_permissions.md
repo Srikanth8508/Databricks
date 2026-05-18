@@ -1,8 +1,23 @@
-````md id="p8vk3x"
 # Databricks Unity Catalog — Permissions & GRANT Commands Guide
 
 > Architecture: Unity Catalog Security Model  
 > Scope: Catalog → Schema → Table → View → Function → Volume
+
+---
+
+# Overview
+
+This guide explains:
+
+- Unity Catalog privilege hierarchy
+- GRANT and REVOKE commands
+- Catalog-level permissions
+- Schema-level permissions
+- Table-level permissions
+- View permissions
+- Function permissions
+- Volume permissions
+- Common access patterns
 
 ---
 
@@ -406,5 +421,3 @@ Table / View / Function / Volume Access
 | SHOW GRANTS | Display configured access |
 
 ---
-
-````
