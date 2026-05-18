@@ -9,48 +9,16 @@
 
 This guide explains:
 
-- What is Delta Sharing
-- Delta Sharing Architecture
-- Share Creation
-- Recipient Creation
-- Granting Access
-- Activation Links
-- Consumer Access
-- Important Commands
-- Advanced Topics
-- Interview Questions
-
----
-
-# What is Delta Sharing?
-
-## Description
-Delta Sharing is an open protocol developed by Databricks for securely sharing data across organizations, workspaces, clouds, and platforms.
-
-It allows sharing tables, views, and volumes without giving direct workspace access.
-
----
-
-# What Can Be Shared?
-
-| Shareable Object | Description |
-|---|---|
-| Tables | Delta tables |
-| Views | Secure SQL views |
-| Volumes | Unity Catalog files |
-| Streaming Data | Shared incremental data |
-
----
-
-# Delta Sharing Benefits
-
-| Benefit | Description |
-|---|---|
-| Secure Sharing | No direct workspace access required |
-| Cross Platform | Works across clouds and tools |
-| Open Protocol | Supports external consumers |
-| Real-Time Access | Always latest Delta data |
-| Governance | Controlled through Unity Catalog |
+- Delta Sharing setup
+- External Delta Sharing enablement
+- Unity Catalog requirements
+- Share creation
+- Recipient creation
+- Granting access
+- Activation links
+- Consumer access
+- Security model
+- Advanced sharing topics
 
 ---
 
@@ -78,29 +46,25 @@ Recipient Consumes Shared Data
 
 ---
 
-# Delta Sharing Components
-
-| Component | Purpose |
-|---|---|
-| Share | Container for shared data |
-| Recipient | External consumer |
-| Provider | Data owner |
-| Shared Table | Table added into share |
-
----
-
 # Important Requirement
 
 ## Description
-Delta Sharing requires Unity Catalog to be enabled in the Databricks workspace.
+Before starting Delta Sharing practice, ensure that:
 
-The workspace must be attached to a Unity Catalog metastore.
+- Unity Catalog is enabled
+- Metastore is attached
+- External Delta Sharing is enabled
+
+Without enabling external Delta Sharing, recipients outside the organization cannot access shared data.
 
 ---
 
-## Verify Unity Catalog
+# 1. Verify Unity Catalog
 
-### Command
+## Description
+Check whether Unity Catalog is enabled in the workspace.
+
+## Command
 
 ```sql
 SHOW CATALOGS;
@@ -120,7 +84,7 @@ SHOW CATALOGS;
 
 ## Interpretation
 
-If catalogs like:
+If catalogs such as:
 
 - `main`
 - `system`
@@ -130,32 +94,110 @@ exist → Unity Catalog is likely enabled.
 
 ---
 
+# 2. Enable External Delta Sharing
+
+## Description
+External Delta Sharing must be enabled at the metastore level before creating external recipients.
+
+If disabled, external sharing will not work.
+
+---
+
+## Steps
+
+```text
+Open Browser
+      ↓
+Login to:
+https://accounts.azuredatabricks.net/
+
+      ↓
+Click Catalog
+      ↓
+Choose Metastore
+      ↓
+Enable Checkbox:
+"Allow Delta Sharing with parties outside your organization"
+
+      ↓
+Choose Expiration Days
+      ↓
+Choose Token Name
+      ↓
+Save Changes
+```
+
+---
+
+## Portal Navigation
+
+```text
+Accounts Console
+      ↓
+Catalog
+      ↓
+Metastore
+      ↓
+Delta Sharing Settings
+```
+
+---
+
+## Important Settings
+
+| Setting | Purpose |
+|---|---|
+| Allow Delta Sharing with parties outside your organization | Enables external sharing |
+| Expiration Days | Token validity duration |
+| Token Name | Recipient authentication token |
+
+---
+
+## Purpose
+- Enables external recipient sharing
+- Allows secure cross-organization access
+
+---
+
+# Delta Sharing Components
+
+| Component | Purpose |
+|---|---|
+| Share | Container for shared data |
+| Recipient | External consumer |
+| Provider | Data owner |
+| Shared Table | Table added into share |
+
+---
+
 # Delta Sharing Practice Flow
 
 ```text
+Enable External Delta Sharing
+            ↓
 Create Table
-      ↓
+            ↓
 Create Share
-      ↓
+            ↓
 Add Table to Share
-      ↓
+            ↓
 Create Recipient
-      ↓
+            ↓
 Grant Share Access
-      ↓
+            ↓
 Generate Activation Link
-      ↓
+            ↓
 Recipient Accesses Shared Data
 ```
 
 ---
 
-# 1. Create Sample Table
+# 3. Create Sample Table
 
 ## Description
-Creates a sample Delta table for sharing practice.
+Creates a sample Delta table for Delta Sharing practice.
 
-This table will later be added into the Share object.
+This table will later be shared with recipients.
 
 ## Command
 
@@ -177,16 +219,16 @@ VALUES
 
 ## Purpose
 - Creates practice dataset
-- Provides sample shareable table
+- Provides shareable table
 
 ---
 
-# 2. Create Share
+# 4. Create Share
 
 ## Description
 Creates a Share object in Unity Catalog.
 
-A Share acts as a container for tables, views, and volumes.
+A Share acts as a secure container for shared objects.
 
 ## Command
 
@@ -197,17 +239,17 @@ CREATE SHARE employee_share_obj;
 ---
 
 ## Purpose
-- Creates secure share container
-- Used for sharing objects externally
+- Creates share container
+- Enables secure data sharing
 
 ---
 
-# 3. Add Table to Share
+# 5. Add Table to Share
 
 ## Description
 Adds a Delta table into the Share object.
 
-Recipients can access tables added to the Share.
+Recipients can access only objects added to the Share.
 
 ## Command
 
@@ -220,16 +262,16 @@ ADD TABLE demo.default.employee_share;
 
 ## Purpose
 - Adds table into share
-- Makes table available for recipients
+- Makes table available externally
 
 ---
 
-# 4. Create Recipient
+# 6. Create Recipient
 
 ## Description
 Creates a Recipient object representing the external consumer.
 
-Recipients can be Databricks users, workspaces, or external systems.
+Recipients can be users, external organizations, or Databricks workspaces.
 
 ---
 
@@ -255,17 +297,17 @@ USING IDENTITY 'lumieresaloonbacklink@gmail.com';
 ---
 
 ## Purpose
-- Defines external consumer
+- Creates recipient configuration
 - Enables secure authentication
 
 ---
 
-# 5. Grant Share Access to Recipient
+# 7. Grant Share Access
 
 ## Description
 Grants recipient access to the Share object.
 
-Without this step, recipients cannot access shared data.
+Without this step, recipients cannot query shared data.
 
 ## Command
 
@@ -278,15 +320,15 @@ TO RECIPIENT practice_user;
 ---
 
 ## Purpose
-- Grants access to shared tables
-- Enables recipient data consumption
+- Grants data access
+- Enables recipient queries
 
 ---
 
-# 6. Generate Activation Link
+# 8. Generate Activation Link
 
 ## Description
-Generates recipient activation details including activation URL and access token.
+Generates recipient activation details such as activation URL and token.
 
 Recipients use this information to activate secure sharing access.
 
@@ -304,22 +346,22 @@ DESCRIBE RECIPIENT practice_user;
 |---|---|
 | activation_url | Recipient activation URL |
 | token | Authentication token |
-| sharing_identifier | Unique recipient identity |
+| sharing_identifier | Unique sharing identity |
 
 ---
 
 ## Purpose
-- Generates secure activation link
+- Generates secure activation details
 - Enables recipient onboarding
 
 ---
 
-# 7. Consumer Side Access
+# 9. Consumer Side Access
 
 ## Description
-Recipients use the activation link to access shared data securely.
+Recipients open the activation link and access shared data securely.
 
-No direct workspace access is required.
+No direct Databricks workspace access is required.
 
 ---
 
@@ -330,16 +372,10 @@ Open Activation Link
         ↓
 Authenticate
         ↓
-Access Shared Tables
+Access Shared Data
         ↓
-Query Shared Data
+Run Queries
 ```
-
----
-
-## Purpose
-- Enables secure external data access
-- Supports cross-workspace sharing
 
 ---
 
@@ -348,9 +384,6 @@ Query Shared Data
 ---
 
 # Show Shares
-
-## Description
-Displays all Share objects available in the workspace.
 
 ## Command
 
@@ -362,9 +395,6 @@ SHOW SHARES;
 
 # Show Recipients
 
-## Description
-Displays all configured recipients.
-
 ## Command
 
 ```sql
@@ -375,9 +405,6 @@ SHOW RECIPIENTS;
 
 # Show Shared Objects
 
-## Description
-Displays all tables/views inside a Share.
-
 ## Command
 
 ```sql
@@ -387,9 +414,6 @@ SHOW ALL IN SHARE employee_share_obj;
 ---
 
 # Remove Table from Share
-
-## Description
-Removes a table from the Share object.
 
 ## Command
 
@@ -402,9 +426,6 @@ REMOVE TABLE demo.default.employee_share;
 
 # Drop Share
 
-## Description
-Deletes the Share object.
-
 ## Command
 
 ```sql
@@ -415,9 +436,6 @@ DROP SHARE employee_share_obj;
 
 # Drop Recipient
 
-## Description
-Deletes the recipient configuration.
-
 ## Command
 
 ```sql
@@ -426,73 +444,7 @@ DROP RECIPIENT practice_user;
 
 ---
 
-# Example Shared Data Query
-
-## Description
-Recipient queries shared data without direct workspace access.
-
-## Example
-
-```sql
-SELECT *
-FROM employee_share;
-```
-
----
-
-# Delta Sharing Security Model
-
-```text
-Unity Catalog
-       ↓
-Share Object
-       ↓
-Recipient Authentication
-       ↓
-Controlled Secure Access
-```
-
----
-
-# Types of Delta Sharing
-
-| Type | Description |
-|---|---|
-| Databricks-to-Databricks | Sharing between workspaces |
-| Open Sharing | Sharing with external systems |
-| Cross Cloud Sharing | Multi-cloud sharing |
-| Cross Region Sharing | Regional data sharing |
-
----
-
-# Advanced Practice Topics
-
-| Topic | Description |
-|---|---|
-| Sharing Views | Share secure SQL views |
-| Sharing Volumes | Share Unity Catalog files |
-| Open Sharing | External consumers |
-| Recipient Tokens | Authentication management |
-| Cross-region Sharing | Multi-region access |
-| Clean Rooms | Privacy-safe collaboration |
-| Governance | Unity Catalog security |
-
----
-
-# Common Interview Questions
-
-| Question | Focus Area |
-|---|---|
-| Difference between Delta Sharing and DBFS sharing | Architecture |
-| Open Sharing vs Databricks Sharing | Security |
-| How recipient authentication works | Authentication |
-| Share vs Recipient vs Provider | Components |
-| Benefits of Delta Sharing | Governance |
-| Why Unity Catalog is required | Security Model |
-
----
-
-# Important Delta Sharing Concepts
+# Important Concepts
 
 | Concept | Description |
 |---|---|
@@ -502,43 +454,30 @@ Controlled Secure Access
 | Activation URL | Access onboarding link |
 | Token | Authentication credential |
 | Unity Catalog | Governance layer |
-| Open Sharing | External platform access |
+| External Sharing | Cross-organization sharing |
 
 ---
 
 # End-to-End Flow
 
 ```text
-Create Table
-      ↓
+Enable External Delta Sharing
+            ↓
+Create Shareable Table
+            ↓
 Create Share
-      ↓
+            ↓
 Add Table to Share
-      ↓
+            ↓
 Create Recipient
-      ↓
+            ↓
 Grant Share Access
-      ↓
+            ↓
 Generate Activation URL
-      ↓
-Recipient Queries Shared Data
+            ↓
+Recipient Accesses Shared Data
 ```
 
----
 
-# Summary
-
-This guide demonstrated:
-
-- Delta Sharing fundamentals
-- Share creation
-- Recipient management
-- Granting share access
-- Activation links
-- Consumer-side access
-- Unity Catalog integration
-- Security model
-- Advanced sharing topics
-- Interview preparation topics
 
 ---
