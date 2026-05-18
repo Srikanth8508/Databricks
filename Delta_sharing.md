@@ -5,23 +5,6 @@
 
 ---
 
-# Overview
-
-This guide explains:
-
-- Delta Sharing setup
-- External Delta Sharing enablement
-- Unity Catalog requirements
-- Share creation
-- Recipient creation
-- Granting access
-- Activation links
-- Consumer access
-- Security model
-- Advanced sharing topics
-
----
-
 # Delta Sharing Architecture
 
 ```text
