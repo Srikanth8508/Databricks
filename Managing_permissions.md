@@ -1,23 +1,107 @@
-# Databricks Unity Catalog — Permissions & GRANT Commands Guide
+# Databricks Unity Catalog — Permissions & User Access Management Guide
 
-> Architecture: Unity Catalog Security Model  
-> Scope: Catalog → Schema → Table → View → Function → Volume
+> Architecture: Azure AD → Databricks Workspace → Unity Catalog Permissions  
+> Scope: User Creation → Workspace Access → Catalog → Schema → Table → View → Function → Volume
 
 ---
 
-# Overview
+# User Access Flow
 
-This guide explains:
+```text
+Azure Portal
+    ↓
+Create Azure AD User
+    ↓
+Add User into Databricks Workspace
+    ↓
+Grant Unity Catalog Permissions
+```
 
-- Unity Catalog privilege hierarchy
-- GRANT and REVOKE commands
-- Catalog-level permissions
-- Schema-level permissions
-- Table-level permissions
-- View permissions
-- Function permissions
-- Volume permissions
-- Common access patterns
+---
+
+# 1. Create User in Azure Portal
+
+## Description
+Create a new Azure Active Directory user before granting Databricks access.
+
+This user will later be added into the Databricks workspace.
+
+---
+
+## Steps
+
+```text
+Open Azure Portal
+        ↓
+Go to Users
+        ↓
+Click Create New User
+```
+
+---
+
+## Required Details
+
+| Field | Description |
+|---|---|
+| User Principal Name | Login email / username |
+| Display Name | User display name |
+
+---
+
+## Example
+
+| Field | Value |
+|---|---|
+| User Principal Name | lumieresaloonbacklink@gmail.com |
+| Display Name | Demo User |
+
+---
+
+## Purpose
+- Creates Azure AD identity
+- Enables authentication into Databricks
+
+---
+
+# 2. Add User into Databricks Workspace
+
+## Description
+After creating the Azure AD user, add the same user into the Databricks workspace.
+
+This allows the user to access Databricks resources.
+
+---
+
+## Steps
+
+```text
+Login to Databricks
+        ↓
+Go to Settings
+        ↓
+Identity and Access
+        ↓
+Users (Manage)
+        ↓
+Add User
+        ↓
+Enter Previously Created User Name
+```
+
+---
+
+## Example
+
+```text
+lumieresaloonbacklink@gmail.com
+```
+
+---
+
+## Purpose
+- Grants workspace access
+- Enables user authentication into Databricks
 
 ---
 
@@ -33,23 +117,23 @@ Table / View / Function / Volume
 
 ---
 
-# 1. Catalog Level Permissions
+# 3. Catalog Level Permissions
 
 ## Description
 Catalog-level permissions control access to the catalog itself.
 
-Users must have `USE CATALOG` permission before accessing schemas or tables inside the catalog.
+Users must have `USE CATALOG` permission before accessing schemas or tables.
 
 ---
 
-## Grant Access to Catalog
+## Grant Catalog Access
 
 ### Command
 
 ```sql
 GRANT USE CATALOG
 ON CATALOG demo
-TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
+TO `lumieresaloonbacklink@gmail.com`;
 ```
 
 ---
@@ -58,29 +142,19 @@ TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 
 | Privilege | Description |
 |---|---|
-| `USE CATALOG` | Allows access to the catalog |
-| `CREATE SCHEMA` | Allows creating schemas |
-| `BROWSE` | Allows browsing metadata |
-| `ALL PRIVILEGES` | Grants all catalog permissions |
+| `USE CATALOG` | Access catalog |
+| `CREATE SCHEMA` | Create schemas |
+| `BROWSE` | Browse metadata |
+| `ALL PRIVILEGES` | Full catalog access |
 
 ---
 
-## Example — Full Catalog Access
-
-```sql
-GRANT ALL PRIVILEGES
-ON CATALOG demo
-TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
-```
-
----
-
-# 2. Schema Level Permissions
+# 4. Schema Level Permissions
 
 ## Description
 Schema-level permissions control access within a schema/database.
 
-Users need `USE SCHEMA` permission before accessing objects inside the schema.
+Users need `USE SCHEMA` permission before accessing schema objects.
 
 ---
 
@@ -91,7 +165,7 @@ Users need `USE SCHEMA` permission before accessing objects inside the schema.
 ```sql
 GRANT USE SCHEMA
 ON SCHEMA demo.default
-TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
+TO `lumieresaloonbacklink@gmail.com`;
 ```
 
 ---
@@ -104,25 +178,25 @@ TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 | `CREATE TABLE` | Create tables |
 | `CREATE VIEW` | Create views |
 | `CREATE FUNCTION` | Create functions |
-| `MODIFY` | Modify schema objects |
+| `MODIFY` | Modify objects |
 | `ALL PRIVILEGES` | Full schema access |
 
 ---
 
-## Example — Data Engineer Access
+# Example — Data Engineer Access
 
 ```sql
 GRANT CREATE TABLE, MODIFY
 ON SCHEMA demo.default
-TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
+TO `lumieresaloonbacklink@gmail.com`;
 ```
 
 ---
 
-# 3. Table Level Permissions
+# 5. Table Level Permissions
 
 ## Description
-Table-level permissions are the most commonly used permissions in Unity Catalog.
+Table-level permissions are most commonly used in Unity Catalog.
 
 These permissions control read and write operations on tables.
 
@@ -135,7 +209,7 @@ These permissions control read and write operations on tables.
 ```sql
 GRANT SELECT
 ON TABLE demo.default.employee
-TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
+TO `lumieresaloonbacklink@gmail.com`;
 ```
 
 ---
@@ -145,52 +219,42 @@ TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 | Privilege | Description |
 |---|---|
 | `SELECT` | Read table data |
-| `MODIFY` | Modify table structure |
+| `MODIFY` | Modify table |
 | `INSERT` | Insert records |
 | `UPDATE` | Update records |
 | `DELETE` | Delete records |
-| `TRUNCATE` | Remove all table rows |
-| `READ_METADATA` | View table metadata |
+| `TRUNCATE` | Remove all rows |
+| `READ_METADATA` | View metadata |
 | `ALL PRIVILEGES` | Full table access |
 
 ---
 
-## Example — Full Table Access
+# Example — Full Table Access
 
 ```sql
 GRANT ALL PRIVILEGES
 ON TABLE demo.default.employee
-TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
+TO `lumieresaloonbacklink@gmail.com`;
 ```
 
 ---
 
-## Example — Read-Only Access
+# Example — Read-Only Access
 
 ```sql
 GRANT SELECT
 ON TABLE demo.default.employee
-TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
+TO `lumieresaloonbacklink@gmail.com`;
 ```
 
 ---
 
-## Example — Insert and Update Access
-
-```sql
-GRANT INSERT, UPDATE
-ON TABLE demo.default.employee
-TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
-```
-
----
-
-# 4. View Level Permissions
+# 6. View Level Permissions
 
 ## Description
 View-level permissions control access to SQL views.
 
-Users typically need `SELECT` permission to query a view.
+Users need `SELECT` permission to query views.
 
 ---
 
@@ -201,21 +265,12 @@ Users typically need `SELECT` permission to query a view.
 ```sql
 GRANT SELECT
 ON VIEW demo.default.sales_view
-TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
+TO `lumieresaloonbacklink@gmail.com`;
 ```
 
 ---
 
-## Common View Privileges
-
-| Privilege | Description |
-|---|---|
-| `SELECT` | Read view data |
-| `ALL PRIVILEGES` | Full access to view |
-
----
-
-# 5. Function Level Permissions
+# 7. Function Level Permissions
 
 ## Description
 Function-level permissions control execution access for SQL functions.
@@ -231,26 +286,17 @@ Users require `EXECUTE` permission to run functions.
 ```sql
 GRANT EXECUTE
 ON FUNCTION demo.default.calculate_tax
-TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
+TO `lumieresaloonbacklink@gmail.com`;
 ```
 
 ---
 
-## Common Function Privileges
-
-| Privilege | Description |
-|---|---|
-| `EXECUTE` | Execute SQL function |
-| `ALL PRIVILEGES` | Full function access |
-
----
-
-# 6. Volume Level Permissions
+# 8. Volume Level Permissions
 
 ## Description
 Volume-level permissions control access to Unity Catalog volumes and files.
 
-Used for managing file-based storage access.
+Used for managing storage-level access.
 
 ---
 
@@ -261,7 +307,7 @@ Used for managing file-based storage access.
 ```sql
 GRANT READ FILES
 ON VOLUME demo.default.raw_files
-TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
+TO `lumieresaloonbacklink@gmail.com`;
 ```
 
 ---
@@ -270,18 +316,8 @@ TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 
 | Privilege | Description |
 |---|---|
-| `READ FILES` | Read files from volume |
-| `WRITE FILES` | Write files into volume |
-
----
-
-## Example — Read & Write Access
-
-```sql
-GRANT READ FILES, WRITE FILES
-ON VOLUME demo.default.raw_files
-TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
-```
+| `READ FILES` | Read files |
+| `WRITE FILES` | Write files |
 
 ---
 
@@ -290,11 +326,6 @@ TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ---
 
 # Read-Only User Access
-
-## Description
-Provides read-only access to all tables inside a schema.
-
-Useful for analysts and reporting users.
 
 ## Commands
 
@@ -316,11 +347,6 @@ TO `user`;
 
 # Full Table Access
 
-## Description
-Provides complete control over a specific table.
-
-Useful for table owners or administrators.
-
 ## Command
 
 ```sql
@@ -332,11 +358,6 @@ TO `user`;
 ---
 
 # Data Engineer Access
-
-## Description
-Allows engineers to create and modify schema objects.
-
-Useful for ETL and pipeline development.
 
 ## Command
 
@@ -354,21 +375,15 @@ TO `user`;
 
 # Show User Grants
 
-## Description
-Displays all privileges granted to a user.
-
 ## Command
 
 ```sql
-SHOW GRANTS TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
+SHOW GRANTS TO `lumieresaloonbacklink@gmail.com`;
 ```
 
 ---
 
 # Show Table Grants
-
-## Description
-Displays permissions configured on a table.
 
 ## Command
 
@@ -381,43 +396,48 @@ ON TABLE demo.default.employee_d;
 
 # Revoke Permissions
 
-## Description
-Removes privileges from a user.
-
 ## Command
 
 ```sql
 REVOKE SELECT
 ON TABLE demo.default.employee_d
-FROM `lumiere@srikanth81444gmail.onmicrosoft.com`;
+FROM `lumieresaloonbacklink@gmail.com`;
 ```
 
 ---
 
-# Example Permission Flow
+# Complete Access Flow
 
 ```text
-Catalog Access
-        ↓
-Schema Access
-        ↓
-Table / View / Function / Volume Access
+Azure Portal
+    ↓
+Create Azure AD User
+    ↓
+Add User into Databricks Workspace
+    ↓
+Grant Catalog Permission
+    ↓
+Grant Schema Permission
+    ↓
+Grant Table/View/Function Access
 ```
 
 ---
 
-# Important Unity Catalog Concepts
+# Summary
 
-| Concept | Description |
-|---|---|
-| Catalog | Top-level container |
-| Schema | Database inside catalog |
-| Table | Structured data object |
-| View | Virtual query object |
-| Function | Reusable SQL logic |
-| Volume | File storage object |
-| GRANT | Assign permissions |
-| REVOKE | Remove permissions |
-| SHOW GRANTS | Display configured access |
+This guide demonstrated:
+
+- Azure AD user creation
+- Adding users into Databricks
+- Unity Catalog permission hierarchy
+- Catalog-level permissions
+- Schema-level permissions
+- Table-level permissions
+- View permissions
+- Function permissions
+- Volume permissions
+- GRANT / REVOKE commands
+- Security best practices
 
 ---
