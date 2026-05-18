@@ -53,7 +53,7 @@ Click Create New User
 
 | Field | Value |
 |---|---|
-| User Principal Name | lumieresaloonbacklink@gmail.com |
+| User Principal Name | lumiere |
 | Display Name | Demo User |
 
 ---
@@ -94,7 +94,7 @@ Enter Previously Created User Name
 ## Example
 
 ```text
-lumieresaloonbacklink@gmail.com
+lumiere@srikanth81444gmail.onmicrosoft.com
 ```
 
 ---
@@ -133,7 +133,7 @@ Users must have `USE CATALOG` permission before accessing schemas or tables.
 ```sql
 GRANT USE CATALOG
 ON CATALOG demo
-TO `lumieresaloonbacklink@gmail.com`;
+TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
@@ -165,7 +165,7 @@ Users need `USE SCHEMA` permission before accessing schema objects.
 ```sql
 GRANT USE SCHEMA
 ON SCHEMA demo.default
-TO `lumieresaloonbacklink@gmail.com`;
+TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
@@ -188,7 +188,7 @@ TO `lumieresaloonbacklink@gmail.com`;
 ```sql
 GRANT CREATE TABLE, MODIFY
 ON SCHEMA demo.default
-TO `lumieresaloonbacklink@gmail.com`;
+TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
@@ -209,7 +209,7 @@ These permissions control read and write operations on tables.
 ```sql
 GRANT SELECT
 ON TABLE demo.default.employee
-TO `lumieresaloonbacklink@gmail.com`;
+TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
@@ -234,7 +234,7 @@ TO `lumieresaloonbacklink@gmail.com`;
 ```sql
 GRANT ALL PRIVILEGES
 ON TABLE demo.default.employee
-TO `lumieresaloonbacklink@gmail.com`;
+TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
@@ -244,7 +244,7 @@ TO `lumieresaloonbacklink@gmail.com`;
 ```sql
 GRANT SELECT
 ON TABLE demo.default.employee
-TO `lumieresaloonbacklink@gmail.com`;
+TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
@@ -265,7 +265,7 @@ Users need `SELECT` permission to query views.
 ```sql
 GRANT SELECT
 ON VIEW demo.default.sales_view
-TO `lumieresaloonbacklink@gmail.com`;
+TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
@@ -286,7 +286,7 @@ Users require `EXECUTE` permission to run functions.
 ```sql
 GRANT EXECUTE
 ON FUNCTION demo.default.calculate_tax
-TO `lumieresaloonbacklink@gmail.com`;
+TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
@@ -307,7 +307,7 @@ Used for managing storage-level access.
 ```sql
 GRANT READ FILES
 ON VOLUME demo.default.raw_files
-TO `lumieresaloonbacklink@gmail.com`;
+TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
@@ -378,7 +378,7 @@ TO `user`;
 ## Command
 
 ```sql
-SHOW GRANTS TO `lumieresaloonbacklink@gmail.com`;
+SHOW GRANTS TO `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
@@ -401,7 +401,7 @@ ON TABLE demo.default.employee_d;
 ```sql
 REVOKE SELECT
 ON TABLE demo.default.employee_d
-FROM `lumieresaloonbacklink@gmail.com`;
+FROM `lumiere@srikanth81444gmail.onmicrosoft.com`;
 ```
 
 ---
