@@ -1,37 +1,12 @@
-# End-to-End Setup: Azure Databricks + External Blob Storage + Delta Lake
-
-## Goal
-
-The goal of this setup is to:
-
-- Create an Azure Databricks Workspace and Compute Cluster
-- Configure external storage using Azure Blob Storage / ADLS Gen2
-- Connect Databricks securely with external storage
-- Create Delta tables in external storage
-- Store logs in external storage
-- Configure IAM access and authentication
-- Verify storage connectivity from Databricks
-
----
-
-# Architecture Overview
-
-| Component | Purpose |
-|---|---|
-| Azure Storage Account (ADLS Gen2) | External Storage |
-| Blob Containers | Store raw data and Delta tables |
-| Microsoft Entra ID | Authentication |
-| Service Principal | Secure access to storage |
-| Azure Databricks | Data Engineering Platform |
-| Databricks Cluster | Compute Engine |
-| Delta Lake | ACID Storage Format |
-| Unity Catalog | Governance and External Locations |
-
----
+# Azure Databricks + External Blob Storage + Delta Lake
 
 # Phase 1: Azure Resource Setup
 
-## Step 1: Create Resource Group
+---
+
+# Step 1: Create Resource Group
+
+## Steps
 
 1. Open Azure Portal
 2. Search for **Resource Groups**
@@ -48,12 +23,16 @@ The goal of this setup is to:
 
 ---
 
-## Step 2: Create Storage Account (ADLS Gen2)
+# Step 2: Create Storage Account (ADLS Gen2)
+
+## Steps
 
 1. Search for **Storage Accounts**
 2. Click **Create**
 
-### Basic Configuration
+---
+
+## Basic Configuration
 
 | Field | Example |
 |---|---|
@@ -65,19 +44,21 @@ The goal of this setup is to:
 
 ---
 
-### Important Configuration
+## Important Configuration
 
 Go to the **Advanced** tab.
 
 Enable:
 
-✅ **Enable Hierarchical Namespace**
+```text
+Enable Hierarchical Namespace
+```
 
 This converts the storage account into:
 
 ## Azure Data Lake Storage Gen2 (ADLS Gen2)
 
-This is required for:
+Required for:
 
 - Delta Lake
 - Unity Catalog
@@ -91,18 +72,21 @@ Click:
 
 ---
 
-## Step 3: Create Containers
+# Step 3: Create Containers
 
-Once the storage account is created:
-
-1. Open the Storage Account
-2. Navigate to:
+## Navigation
 
 ```text
-Data Storage → Containers
+Storage Account
+      ↓
+Data Storage
+      ↓
+Containers
 ```
 
-Create the following containers:
+---
+
+## Create Containers
 
 | Container Name | Purpose |
 |---|---|
@@ -113,13 +97,17 @@ Create the following containers:
 
 ---
 
-## Step 4: Upload Sample CSV File
+# Step 4: Upload Sample CSV File
+
+## Steps
 
 1. Open the `raw-data` container
 2. Click **Upload**
-3. Upload a sample CSV file
+3. Upload sample CSV file
 
-Example:
+---
+
+## Example CSV
 
 ```csv
 id,product,price
@@ -130,9 +118,11 @@ id,product,price
 
 ---
 
-# Phase 2: Configure Authentication & Access
+# Phase 2: Configure Authentication & IAM Access
 
-## Why Authentication is Required
+---
+
+# Why Authentication is Required
 
 Databricks requires secure access to Azure Storage.
 
@@ -145,34 +135,39 @@ Recommended authentication methods:
 
 ---
 
-## Step 1: Create App Registration
+# Step 1: Create App Registration
 
-1. Open Azure Portal
-2. Search for:
+## Navigation
 
 ```text
+Azure Portal
+      ↓
 Microsoft Entra ID
+      ↓
+App Registrations
+      ↓
+New Registration
 ```
 
-3. Navigate to:
+---
 
-```text
-App Registrations → New Registration
-```
-
-4. Enter:
+## Configuration
 
 | Field | Value |
 |---|---|
 | Name | databricks-storage-access |
 
-5. Click **Register**
+Click:
+
+```text
+Register
+```
 
 ---
 
-## Step 2: Copy Required Values
+# Step 2: Copy Required Values
 
-After registration, copy:
+## Copy the Below Values
 
 | Value | Purpose |
 |---|---|
@@ -183,24 +178,24 @@ Save them securely.
 
 ---
 
-## Step 3: Create Client Secret
+# Step 3: Create Client Secret
 
-1. Open the App Registration
-2. Navigate to:
+## Navigation
 
 ```text
 Certificates & Secrets
-```
-
-3. Click:
-
-```text
+      ↓
 New Client Secret
 ```
 
-4. Enter description and expiration
-5. Click **Add**
-6. Copy the secret value immediately
+---
+
+## Steps
+
+1. Enter description
+2. Choose expiration
+3. Click **Add**
+4. Copy secret immediately
 
 ⚠️ Important:
 
@@ -208,15 +203,26 @@ Once you leave the page, the secret value cannot be viewed again.
 
 ---
 
-## Step 4: Assign Storage Permissions
+# Step 4: Assign Storage Permissions
 
-Navigate to:
+## Navigation
 
 ```text
-Storage Account → Access Control (IAM)
+Storage Account
+      ↓
+Access Control (IAM)
+      ↓
+Add Role Assignment
 ```
 
-### Add Role Assignment
+---
+
+# Required IAM Permissions
+
+## 1. Storage Blob Data Contributor
+
+### Purpose
+Allows Databricks to read and write data inside ADLS containers.
 
 | Setting | Value |
 |---|---|
@@ -224,27 +230,77 @@ Storage Account → Access Control (IAM)
 | Assign Access To | User, Group, or Service Principal |
 | Member | databricks-storage-access |
 
-Click:
+---
 
-```text
-Review + Assign
-```
+## 2. EventGrid EventSubscription Contributor
+
+### Purpose
+Required for Auto Loader file notification mode and Event Grid integrations.
+
+Allows Databricks to create and manage Event Grid subscriptions automatically.
+
+| Setting | Value |
+|---|---|
+| Role | EventGrid EventSubscription Contributor |
+| Assign Access To | User, Group, or Service Principal |
+| Member | databricks-storage-access |
+
+---
+
+## 3. Storage Queue Data Contributor
+
+### Purpose
+Required for queue-based file notifications and streaming event processing.
+
+Allows Databricks to read and write Azure Queue messages.
+
+| Setting | Value |
+|---|---|
+| Role | Storage Queue Data Contributor |
+| Assign Access To | User, Group, or Service Principal |
+| Member | databricks-storage-access |
+
+---
+
+# Recommended IAM Role Combination
+
+| Role | Required |
+|---|---|
+| Storage Blob Data Contributor | ✅ Yes |
+| EventGrid EventSubscription Contributor | ✅ Recommended |
+| Storage Queue Data Contributor | ✅ Recommended |
+
+---
+
+# Benefits of Additional Permissions
+
+| Permission | Usage |
+|---|---|
+| EventGrid EventSubscription Contributor | Auto Loader notification setup |
+| Storage Queue Data Contributor | Queue event processing |
+| Storage Blob Data Contributor | Read/write storage access |
 
 ---
 
 # Phase 3: Create Azure Databricks Workspace
 
-## Step 1: Create Workspace
+---
 
-1. Search for:
+# Step 1: Create Workspace
+
+## Navigation
 
 ```text
+Azure Portal
+      ↓
 Azure Databricks
+      ↓
+Create
 ```
 
-2. Click **Create**
+---
 
-### Workspace Configuration
+## Workspace Configuration
 
 | Field | Example |
 |---|---|
@@ -260,11 +316,11 @@ Click:
 
 ---
 
-## Step 2: Launch Workspace
+# Step 2: Launch Workspace
 
-After deployment:
+## Steps
 
-1. Open the Databricks Workspace
+1. Open Databricks Workspace
 2. Click:
 
 ```text
@@ -275,15 +331,21 @@ Launch Workspace
 
 # Phase 4: Create Databricks Cluster
 
-## Step 1: Create Compute
+---
 
-Navigate to:
+# Step 1: Create Compute
+
+## Navigation
 
 ```text
-Compute → Create Compute
+Compute
+      ↓
+Create Compute
 ```
 
-### Cluster Configuration
+---
+
+## Cluster Configuration
 
 | Field | Example |
 |---|---|
@@ -300,15 +362,17 @@ Create Compute
 
 ---
 
-## Common Cluster Issue
+# Common Cluster Issue
 
-### Error
+## Error
 
 ```text
 This account may not have enough CPU cores to start a cluster
 ```
 
-### Fixes
+---
+
+## Fixes
 
 - Increase Azure VM quota
 - Use smaller VM size
@@ -319,19 +383,27 @@ This account may not have enough CPU cores to start a cluster
 
 # Phase 5: Configure Storage Access in Databricks
 
-## Step 1: Create Notebook
+---
 
-Navigate to:
+# Step 1: Create Notebook
+
+## Navigation
 
 ```text
-Workspace → New → Notebook
+Workspace
+      ↓
+New
+      ↓
+Notebook
 ```
 
-Attach the notebook to your cluster.
+Attach notebook to cluster.
 
 ---
 
-## Step 2: Configure OAuth Authentication
+# Step 2: Configure OAuth Authentication
+
+## Command
 
 ```python
 storage_account_name = "databricksdat"
@@ -376,7 +448,9 @@ print("Authentication Configured Successfully")
 
 ---
 
-## Step 3: Verify Storage Connectivity
+# Step 3: Verify Storage Connectivity
+
+## Command
 
 ```python
 dbutils.fs.ls(
@@ -384,15 +458,21 @@ dbutils.fs.ls(
 )
 ```
 
-Expected Result:
+---
 
-You should see uploaded files.
+## Expected Result
+
+Uploaded files should be visible.
 
 ---
 
 # Phase 6: Create Delta Table in External Storage
 
-## Step 1: Read CSV File
+---
+
+# Step 1: Read CSV File
+
+## Command
 
 ```python
 sales_df = spark.read.format("csv") \
@@ -406,7 +486,9 @@ sales_df.show()
 
 ---
 
-## Step 2: Write Data as Delta Table
+# Step 2: Write Data as Delta Table
+
+## Command
 
 ```python
 sales_df.write \
@@ -419,7 +501,9 @@ sales_df.write \
 
 ---
 
-## Step 3: Create External Delta Table
+# Step 3: Create External Delta Table
+
+## Command
 
 ```sql
 CREATE TABLE sales_external
@@ -429,7 +513,9 @@ LOCATION 'abfss://delta-lake@databricksdat.dfs.core.windows.net/sales_delta';
 
 ---
 
-## Step 4: Query the Table
+# Step 4: Query External Table
+
+## Command
 
 ```sql
 SELECT * FROM sales_external;
@@ -437,9 +523,11 @@ SELECT * FROM sales_external;
 
 ---
 
-# Phase 7: Store Cluster Logs in External Storage
+# Phase 7: Configure Cluster Log Delivery
 
-## Why External Logs?
+---
+
+# Why External Logs?
 
 Benefits:
 
@@ -450,12 +538,20 @@ Benefits:
 
 ---
 
-## Configure Cluster Log Delivery
+# Configure Cluster Log Delivery
 
-Navigate to:
+## Navigation
 
 ```text
-Compute → Cluster → Edit → Advanced Options → Logging
+Compute
+      ↓
+Cluster
+      ↓
+Edit
+      ↓
+Advanced Options
+      ↓
+Logging
 ```
 
 Enable:
@@ -464,27 +560,35 @@ Enable:
 Cluster Log Delivery
 ```
 
-Provide log path:
+---
+
+## Log Path
 
 ```text
 abfss://logs@databricksdat.dfs.core.windows.net/cluster-logs/
 ```
 
-Save and restart the cluster.
+Save and restart cluster.
 
 ---
 
 # Phase 8: Unity Catalog External Location Setup
 
-## Step 1: Create Access Connector
+---
 
-Search in Azure Portal:
+# Step 1: Create Access Connector
+
+## Navigation
 
 ```text
+Azure Portal
+      ↓
 Access Connector for Azure Databricks
 ```
 
-Create connector with:
+---
+
+## Configuration
 
 | Field | Example |
 |---|---|
@@ -494,12 +598,14 @@ Create connector with:
 
 ---
 
-## Step 2: Copy Resource ID
+# Step 2: Copy Resource ID
 
-Navigate to:
+## Navigation
 
 ```text
-Access Connector → Properties
+Access Connector
+      ↓
+Properties
 ```
 
 Copy:
@@ -508,23 +614,21 @@ Copy:
 Resource ID
 ```
 
-Example:
+---
+
+# Step 3: Assign Access Connector Permission
+
+## Navigation
 
 ```text
-/subscriptions/xxxx/resourceGroups/xxxx/providers/Microsoft.Databricks/accessConnectors/xxxx
+Storage Account
+      ↓
+Access Control (IAM)
 ```
 
 ---
 
-## Step 3: Assign Access Connector Permission
-
-Navigate to:
-
-```text
-Storage Account → Access Control (IAM)
-```
-
-Assign role:
+## Assign Role
 
 ```text
 Storage Blob Data Contributor
@@ -536,16 +640,20 @@ Assign access to:
 Managed Identity
 ```
 
-Select the Access Connector.
+Select Access Connector.
 
 ---
 
-## Step 4: Create Storage Credential
+# Step 4: Create Storage Credential
 
-In Databricks:
+## Navigation
 
 ```text
-Catalog → External Data → Storage Credentials
+Catalog
+      ↓
+External Data
+      ↓
+Storage Credentials
 ```
 
 Click:
@@ -554,7 +662,9 @@ Click:
 Add Credential
 ```
 
-Configuration:
+---
+
+## Configuration
 
 | Field | Value |
 |---|---|
@@ -562,19 +672,23 @@ Configuration:
 | Authentication Type | Azure Managed Identity |
 | Access Connector ID | Paste Resource ID |
 
-Click **Create**
+---
+
+# Step 5: Create External Location
+
+## Navigation
+
+```text
+Catalog
+      ↓
+External Data
+      ↓
+External Locations
+```
 
 ---
 
-## Step 5: Create External Location
-
-Navigate to:
-
-```text
-Catalog → External Data → External Locations
-```
-
-Configuration:
+## Configuration
 
 | Field | Value |
 |---|---|
@@ -602,7 +716,9 @@ Test Connection
 abfss://<container>@<storage-account>.dfs.core.windows.net/<path>
 ```
 
-Example:
+---
+
+## Example
 
 ```text
 abfss://delta-lake@databricksdat.dfs.core.windows.net/sales_delta
@@ -621,6 +737,3 @@ abfss://delta-lake@databricksdat.dfs.core.windows.net/sales_delta
 | Permission denied | Missing storage access | Reassign IAM role |
 
 ---
-
-
-
