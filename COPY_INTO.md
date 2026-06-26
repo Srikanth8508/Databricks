@@ -1,4 +1,3 @@
-# Databricks `COPY INTO` – Complete Guide (Recommended Learning Order)
 
 ## What is `COPY INTO`?
 
@@ -8,7 +7,6 @@
 
 * ✅ Automatically tracks previously loaded files.
 * ✅ Loads only **new files** by default.
-* ✅ Can **reprocess old files** using `COPY_OPTIONS ('force' = 'true')`.
 * ✅ Supports multiple file formats such as **CSV, JSON, PARQUET, AVRO, ORC, and TEXT**.
 
 ---
