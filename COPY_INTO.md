@@ -1,70 +1,33 @@
-# Databricks `COPY INTO` – End-to-End Example
+# Databricks `COPY INTO` – Complete Guide (Recommended Learning Order)
 
-## Scenario
+## What is `COPY INTO`?
 
-Assume you receive employee data files every day in the following location:
+`COPY INTO` is used to incrementally load files from cloud storage or volumes into a Delta table.
+
+**Key features:**
+
+* ✅ Automatically tracks previously loaded files.
+* ✅ Loads only **new files** by default.
+* ✅ Can **reprocess old files** using `COPY_OPTIONS ('force' = 'true')`.
+* ✅ Supports multiple file formats such as **CSV, JSON, PARQUET, AVRO, ORC, and TEXT**.
+
+---
+
+# 1. Handling Multiple Files Automatically (Production Scenario)
+
+In real projects, you **don't know the names of future files**. New files arrive continuously, so you simply point `COPY INTO` to a folder.
+
+## Initial Folder Structure
 
 ```text
 /Volumes/main/raw/employees/
-│
+
+Day 1
 ├── emp1.csv
 ├── emp2.csv
-├── emp3.csv
-├── customers.json
-└── readme.txt
 ```
 
-You want to load only `emp1.csv` and `emp2.csv` into a Delta table.
-
----
-
-# Step 1: Create the Target Table
-
-```sql
-CREATE TABLE employee_data (
-    id INT,
-    name STRING,
-    department STRING,
-    salary DOUBLE
-);
-```
-
-Initially, the table is empty.
-
-| id          | name | department | salary |
-| ----------- | ---- | ---------- | ------ |
-| *(no rows)* |      |            |        |
-
----
-
-# Step 2: Input Files
-
-## emp1.csv
-
-```csv
-id,name,department,salary
-1,Alice,HR,50000
-2,Bob,IT,65000
-```
-
-## emp2.csv
-
-```csv
-id,name,department,salary
-3,Charlie,Finance,70000
-4,David,Sales,55000
-```
-
-## emp3.csv
-
-```csv
-id,name,department,salary
-5,Eve,Marketing,60000
-```
-
----
-
-# Step 3: Run `COPY INTO`
+## COPY INTO Command
 
 ```sql
 COPY INTO employee_data
@@ -78,132 +41,199 @@ FORMAT_OPTIONS (
   'escape' = '\\'
 )
 
-COPY_OPTIONS (
-  'mergeSchema' = 'true'
-)
+PATTERN = '.*\.csv';
+```
 
-PATTERN = '.*\.csv'
+Notice that **`FILES` is not specified**.
 
-FILES = ('emp1.csv', 'emp2.csv');
+---
+
+## First Execution
+
+Databricks scans the folder.
+
+| File     | Already Loaded? | Action |
+| -------- | --------------- | ------ |
+| emp1.csv | No              | ✅ Load |
+| emp2.csv | No              | ✅ Load |
+
+Databricks internally records:
+
+```text
+Loaded Files
+-------------
+emp1.csv
+emp2.csv
 ```
 
 ---
 
-# How Databricks Processes the Command
+## Day 2 - New File Arrives
 
-## 1. `FROM`
+```text
+/Volumes/main/raw/employees/
 
-```sql
-FROM '/Volumes/main/raw/employees/'
+emp1.csv
+emp2.csv
+emp3.csv
 ```
 
-Databricks looks inside this folder for source files.
+Run the **same `COPY INTO` command**.
 
-It finds:
+| File     | Already Loaded? | Action  |
+| -------- | --------------- | ------- |
+| emp1.csv | Yes             | ⏭️ Skip |
+| emp2.csv | Yes             | ⏭️ Skip |
+| emp3.csv | No              | ✅ Load  |
+
+Only **`emp3.csv`** is processed.
+
+---
+
+## Day 3 - More Files Arrive
+
+```text
+/Volumes/main/raw/employees/
+
+emp1.csv
+emp2.csv
+emp3.csv
+emp4.csv
+emp5.csv
+```
+
+Run the **same command again**.
+
+| File     | Already Loaded? | Action  |
+| -------- | --------------- | ------- |
+| emp1.csv | Yes             | ⏭️ Skip |
+| emp2.csv | Yes             | ⏭️ Skip |
+| emp3.csv | Yes             | ⏭️ Skip |
+| emp4.csv | No              | ✅ Load  |
+| emp5.csv | No              | ✅ Load  |
+
+Only the newly arrived files are loaded.
+
+---
+
+# 2. Forcing Reload of Previously Loaded Files
+
+Normally, Databricks skips files it has already processed.
+
+If you want to **reload all files**, use:
+
+```sql
+COPY INTO employee_data
+FROM '/Volumes/main/raw/employees/'
+FILEFORMAT = CSV
+
+COPY_OPTIONS (
+  'force' = 'true'
+);
+```
+
+## Example
+
+Current folder:
 
 ```text
 emp1.csv
 emp2.csv
 emp3.csv
-customers.json
-readme.txt
 ```
+
+Result:
+
+| File     | Action         |
+| -------- | -------------- |
+| emp1.csv | ✅ Loaded Again |
+| emp2.csv | ✅ Loaded Again |
+| emp3.csv | ✅ Loaded Again |
+
+⚠️ This may create duplicate records because `COPY INTO` appends data.
 
 ---
 
-## 2. `FILEFORMAT = CSV`
+# 3. Understanding `FORMAT_OPTIONS`
 
-Databricks expects the selected files to be CSV files and parses them accordingly.
+## `header = 'true'`
 
----
+Treats the first row as column names.
 
-## 3. `PATTERN = '.*\.csv'`
+### Input
 
-This regular expression keeps only files ending in `.csv`.
-
-Files considered after applying the pattern:
-
-```text
-✓ emp1.csv
-✓ emp2.csv
-✓ emp3.csv
-
-✗ customers.json
-✗ readme.txt
-```
-
----
-
-## 4. `FILES = ('emp1.csv', 'emp2.csv')`
-
-Even though `emp3.csv` matches the pattern, only these two files are loaded:
-
-```text
-✓ emp1.csv
-✓ emp2.csv
-
-✗ emp3.csv (ignored because it is not listed)
-```
-
----
-
-## 5. `FORMAT_OPTIONS`
-
-```sql
-'header' = 'true'
-```
-
-The first line is treated as column names:
-
-```text
+```csv
 id,name,department,salary
+1,Alice,HR,50000
+2,Bob,IT,65000
 ```
 
-and is **not** loaded as data.
+### Loaded Data
 
-```sql
-'delimiter' = ','
-```
+| id | name  | department | salary |
+| -- | ----- | ---------- | ------ |
+| 1  | Alice | HR         | 50000  |
+| 2  | Bob   | IT         | 65000  |
 
-Commas separate individual columns.
+---
+
+## `delimiter = ','`
+
+Defines the column separator.
+
+### Input
 
 ```text
 1,Alice,HR,50000
 ```
 
-becomes
+If your file uses `|` instead:
 
-| id | name  | department | salary |
-| -- | ----- | ---------- | ------ |
-| 1  | Alice | HR         | 50000  |
+```text
+1|Alice|HR|50000
+```
+
+Use:
 
 ```sql
-'quote' = '"'
+FORMAT_OPTIONS (
+  'delimiter' = '|'
+)
 ```
+
+---
+
+## `quote = '"'`
 
 Allows commas inside quoted values.
 
-Example:
+### Input
 
 ```csv
-1,"John, Smith",IT,60000
+1,"John, Smith",IT
 ```
 
-`"John, Smith"` is treated as a single field.
+Without `quote`, `John, Smith` would be split into two columns.
 
-```sql
-'escape' = '\\'
-```
+With `quote`, it is stored correctly as:
 
-Allows escaped quotes inside quoted text.
+| id | name        | department |
+| -- | ----------- | ---------- |
+| 1  | John, Smith | IT         |
 
-Example:
+---
+
+## `escape = '\\'`
+
+Handles escaped quotes inside strings.
+
+### Input
 
 ```csv
-1,"He said \"Hello\"",IT,60000
+1,"He said \"Hello\""
 ```
 
-The resulting value stored is:
+Stored value:
 
 ```text
 He said "Hello"
@@ -211,49 +241,47 @@ He said "Hello"
 
 ---
 
-## 6. `COPY_OPTIONS ('mergeSchema' = 'true')`
+# 4. When to Use `FILES`
 
-If a future file contains an extra column such as `location`:
+Normally, **do not use `FILES`** in production because you don't know future filenames.
 
-```csv
-id,name,department,salary,location
-6,Ravi,IT,70000,Chennai
+However, if you want to load only selected files:
+
+```sql
+COPY INTO employee_data
+FROM '/Volumes/main/raw/employees/'
+FILEFORMAT = CSV
+
+FILES = (
+  'emp10.csv',
+  'emp25.csv'
+);
 ```
 
-Databricks can evolve the target schema to include the new column instead of failing.
+Only these files are processed.
+
+Use cases:
+
+* Testing
+* Reprocessing specific files
+* One-time manual loads
 
 ---
 
-# Final Output Table
+# 5. Summary Table
 
-After processing `emp1.csv` and `emp2.csv`, the `employee_data` table contains:
-
-| id | name    | department | salary |
-| -- | ------- | ---------- | ------ |
-| 1  | Alice   | HR         | 50000  |
-| 2  | Bob     | IT         | 65000  |
-| 3  | Charlie | Finance    | 70000  |
-| 4  | David   | Sales      | 55000  |
-
-Notice that:
-
-* `emp3.csv` was **not loaded** because it was not listed in `FILES`.
-* `customers.json` was **ignored** because it did not match the `PATTERN`.
-* `readme.txt` was **ignored** because it was neither a CSV file nor matched the pattern.
+| Feature         | Purpose                                | Example                                 |            |
+| --------------- | -------------------------------------- | --------------------------------------- | ---------- |
+| `FROM`          | Source folder                          | `/Volumes/main/raw/employees/`          |            |
+| `FILEFORMAT`    | Input file type                        | `CSV`, `JSON`, `PARQUET`, `AVRO`, `ORC` |            |
+| `header`        | Ignore header row                      | `'header'='true'`                       |            |
+| `delimiter`     | Column separator                       | `','`, `'                               | '`, `'\t'` |
+| `quote`         | Handle delimiters inside quoted values | `"John, Smith"`                         |            |
+| `escape`        | Handle escaped quotes                  | `He said \"Hello\"`                     |            |
+| `PATTERN`       | Filter matching files                  | `'.*\.csv'`                             |            |
+| `FILES`         | Load only named files                  | `('emp1.csv','emp2.csv')`               |            |
+| `force='false'` | Skip already loaded files              | Default behavior                        |            |
+| `force='true'`  | Reload previously loaded files         | May create duplicates                   |            |
 
 ---
 
-# What Happens if You Run the Same Command Again?
-
-`COPY INTO` tracks which source files have already been successfully ingested.
-
-If you rerun the same command without changing the files:
-
-```text
-emp1.csv  → Already loaded → Skipped
-emp2.csv  → Already loaded → Skipped
-```
-
-No duplicate rows are inserted.
-
-If a new file `emp4.csv` appears in the folder and matches your filters, only that new file will be loaded.
