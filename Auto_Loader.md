@@ -1,4 +1,4 @@
-# Databricks Auto Loader – Complete Production Guide
+# Databricks Auto Loader
 
 ## 1. Complete Auto Loader Example (All Commonly Used Options)
 
